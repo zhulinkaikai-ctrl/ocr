@@ -1,0 +1,2 @@
+"""FastAPI OCR service helpers."""
+
