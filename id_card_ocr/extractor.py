@@ -22,10 +22,13 @@ from .validator import (
 
 @dataclass(frozen=True)
 class FieldDef:
+    """身份证字段定义：key 给程序使用，label 给页面展示。"""
+
     key: str
     label: str
 
 
+# 正面和反面的字段不同，先判断证件面，再选择对应字段列表。
 FRONT_FIELDS = [
     FieldDef("name", "姓名"),
     FieldDef("gender", "性别"),
@@ -42,6 +45,11 @@ BACK_FIELDS = [
 
 
 def extract_id_card(lines: list[OCRLine]) -> IDCardResult:
+    """把 PaddleOCR 的文本行转换成结构化身份证结果。
+
+    输入示例：OCRLine("姓名张三", 0.98)
+    输出内容：证件面、字段值、字段校验状态、原始 OCR 文本。
+    """
     side = detect_side(lines)
     raw_texts = [line.text for line in lines]
 
@@ -54,6 +62,7 @@ def extract_id_card(lines: list[OCRLine]) -> IDCardResult:
 
 
 def detect_side(lines: list[OCRLine]) -> str:
+    """根据正反面的典型关键词打分，判断当前图片是哪一面。"""
     text = "".join(_compact(line.text) for line in lines)
     front_score = sum(keyword in text for keyword in ["姓名", "性别", "民族", "出生", "住址", "公民身份号码", "身份号码"])
     back_score = sum(keyword in text for keyword in ["签发机关", "有效期限", "中华人民共和国"])
@@ -66,6 +75,7 @@ def detect_side(lines: list[OCRLine]) -> str:
 
 
 def _extract_front_fields(lines: list[OCRLine]) -> list[ExtractedField]:
+    # 每个字段提取器返回 (字段值, OCR 置信度)，最后统一封装并校验。
     values: dict[str, tuple[str, float | None]] = {
         "name": _extract_after_label(lines, "姓名", stop_labels=["性别", "民族", "出生", "住址", "公民"]),
         "gender": _extract_gender(lines),
@@ -94,6 +104,7 @@ def _extract_back_fields(lines: list[OCRLine]) -> list[ExtractedField]:
 
 
 def _make_field(definition: FieldDef, data: tuple[str, float | None]) -> ExtractedField:
+    """统一创建字段结果，避免每个提取函数重复处理状态和置信度。"""
     value, confidence = data
     status = _field_status(definition.key, value)
     return ExtractedField(
@@ -106,6 +117,7 @@ def _make_field(definition: FieldDef, data: tuple[str, float | None]) -> Extract
 
 
 def _field_status(key: str, value: str) -> str:
+    # 身份证号、出生日期、有效期有各自格式校验；其他字段只检查是否为空。
     if key == "id_number":
         return validate_id_number(value)
     if key == "birth_date":
@@ -120,6 +132,7 @@ def _extract_after_label(
     label: str,
     stop_labels: list[str] | None = None,
 ) -> tuple[str, float | None]:
+    """提取标签后面的文字，也兼容“标签在一行、值在下一行”的 OCR 结果。"""
     stop_labels = stop_labels or []
     for index, line in enumerate(lines):
         text = _compact(line.text)
@@ -146,6 +159,7 @@ def _extract_gender(lines: list[OCRLine]) -> tuple[str, float | None]:
 
 
 def _extract_ethnicity(lines: list[OCRLine]) -> tuple[str, float | None]:
+    # 向前匹配民族名称，遇到出生/住址等下一个标签时停止。
     for line in lines:
         text = _compact(line.text)
         match = re.search(r"民族[:：]?([\u4e00-\u9fa5]{1,4})(?=$|出生|住址|公民|号码)", text)
@@ -166,6 +180,7 @@ def _extract_birth_date(lines: list[OCRLine]) -> tuple[str, float | None]:
 
 
 def _extract_address(lines: list[OCRLine]) -> tuple[str, float | None]:
+    """合并多行住址，直到遇到身份证号标签或一个完整身份证号。"""
     parts: list[str] = []
     confidences: list[float] = []
     collecting = False
@@ -192,6 +207,7 @@ def _extract_address(lines: list[OCRLine]) -> tuple[str, float | None]:
 
     if not parts:
         return "", None
+    # 多行地址的置信度使用各行平均值，便于页面给出一个总体参考。
     return "".join(parts), mean(confidences) if confidences else None
 
 
@@ -221,6 +237,7 @@ def _extract_valid_period(lines: list[OCRLine]) -> tuple[str, float | None]:
 
 
 def _find_id_number(text: str) -> str:
+    # 中国居民身份证号码：6 位地址码 + 8 位出生日期 + 3 位顺序码 + 校验位。
     match = re.search(r"[1-9]\d{5}(?:18|19|20)\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])\d{3}[\dXx]", text)
     return match.group(0) if match else ""
 

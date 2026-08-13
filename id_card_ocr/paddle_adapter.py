@@ -10,19 +10,28 @@ from .models import OCRLine
 
 
 class PaddleOCRUnavailableError(RuntimeError):
-    """Raised when PaddleOCR is not installed or cannot be initialized."""
+    """PaddleOCR 未安装、初始化失败或当前版本接口不兼容。"""
 
 
 class PaddleOCRAdapter:
+    """屏蔽不同 PaddleOCR 版本差异，并统一输出 OCRLine 列表。
+
+    PaddleOCR 2.x 常用 engine.ocr()，3.x 常用 engine.predict()，
+    业务层不需要知道当前安装的是哪一套接口。
+    """
+
     def __init__(self, lang: str = "ch", enable_orientation: bool = True):
         self.lang = lang
         self.enable_orientation = enable_orientation
         self._engine: Any | None = None
 
     def recognize(self, image: Any) -> list[OCRLine]:
+        """识别一张图片，返回统一的文本、置信度和文本框数据。"""
         engine = self._get_engine()
+        # PaddleOCR 接受 NumPy 数组；页面/API 传进来的通常是 Pillow Image。
         np_image = _to_numpy_image(image)
 
+        # PaddleOCR 3.x 优先使用 predict。
         if hasattr(engine, "predict"):
             try:
                 result = engine.predict(np_image)
@@ -30,6 +39,8 @@ class PaddleOCRAdapter:
                 result = engine.predict(input=np_image)
             return normalize_paddle_result(result)
 
+        # PaddleOCR 2.x 的兼容分支。有些小版本已经移除了 cls 参数，
+        # 所以先检查方法签名再决定是否传入。
         if hasattr(engine, "ocr"):
             ocr_kwargs = {}
             if _ocr_accepts_cls(engine.ocr):
@@ -42,9 +53,11 @@ class PaddleOCRAdapter:
         )
 
     def _get_engine(self) -> Any:
+        """延迟初始化模型，并缓存到当前适配器对象中。"""
         if self._engine is not None:
             return self._engine
 
+        # 环境变量必须在导入/初始化 PaddleOCR 之前设置才会生效。
         _configure_paddle_runtime()
 
         try:
@@ -54,6 +67,9 @@ class PaddleOCRAdapter:
                 "PaddleOCR is not installed. Install paddleocr and paddlepaddle first."
             ) from exc
 
+        # PaddleOCR 不同版本接受的初始化参数不同，从新接口到旧接口逐级尝试。
+        # TypeError 通常表示“参数名不支持”，可以继续尝试下一组参数；
+        # 其他异常多为模型/运行时故障，应直接报告。
         init_attempts = [
             {
                 "lang": self.lang,
@@ -91,6 +107,7 @@ class PaddleOCRAdapter:
 
 
 def _configure_paddle_runtime() -> None:
+    """配置模型缓存路径，并规避当前 Windows 环境下的 oneDNN/PIR 属性转换错误。"""
     cache_home = Path(__file__).resolve().parents[1] / ".paddlex_cache"
     cache_home.mkdir(parents=True, exist_ok=True)
     os.environ["PADDLE_PDX_CACHE_HOME"] = str(cache_home)
@@ -100,6 +117,7 @@ def _configure_paddle_runtime() -> None:
 
 
 def select_paddle_device(paddle_module: Any | None = None) -> str:
+    """安装的是 CUDA 版 Paddle 时使用第一张 GPU，否则回退到 CPU。"""
     if paddle_module is None:
         try:
             import paddle as paddle_module  # type: ignore[no-redef]
@@ -123,6 +141,8 @@ def _ocr_accepts_cls(method: Any) -> bool:
 
 
 def normalize_paddle_result(result: Any) -> list[OCRLine]:
+    """把 PaddleOCR 2.x/3.x 的不同返回结构转换成统一 OCRLine。"""
+    # 先按 3.x 结构解析；没有拿到文本时再尝试 2.x 嵌套列表结构。
     lines = _normalize_v3_result(result)
     if lines:
         return lines
@@ -130,6 +150,7 @@ def normalize_paddle_result(result: Any) -> list[OCRLine]:
 
 
 def _normalize_v3_result(result: Any) -> list[OCRLine]:
+    """解析 3.x 的 rec_texts/rec_scores/rec_boxes 数组。"""
     lines: list[OCRLine] = []
     for item in _as_list(result):
         data = _result_to_mapping(item)
@@ -151,6 +172,7 @@ def _normalize_v3_result(result: Any) -> list[OCRLine]:
 
 
 def _normalize_v2_result(result: Any) -> list[OCRLine]:
+    """递归解析 2.x 常见的 [文本框, (文字, 置信度)] 嵌套结构。"""
     lines: list[OCRLine] = []
 
     def visit(node: Any) -> None:
@@ -179,6 +201,8 @@ def _looks_like_v2_line(node: Any) -> bool:
 
 
 def _result_to_mapping(item: Any) -> dict[str, Any]:
+    # PaddleOCR 3.x 不同补丁版本可能返回 dict、结果对象或 JSON 字符串。
+    # 这里依次尝试常见转换方法，统一得到字典。
     if isinstance(item, dict):
         return item
 

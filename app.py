@@ -14,15 +14,20 @@ from id_card_ocr.paddle_adapter import PaddleOCRAdapter, PaddleOCRUnavailableErr
 from ocr_api.responses import build_business_license_success, build_id_card_success
 
 
+# 页面里只允许这两种证件类型。用 Literal 的好处是：后面 IDE/类型检查能提醒拼写错误。
 DocumentType = Literal["身份证", "营业执照"]
 
 
 @st.cache_resource(show_spinner=False)
 def get_ocr_adapter() -> PaddleOCRAdapter:
+    # PaddleOCR 模型初始化比较慢，所以 Streamlit 会缓存这个对象。
+    # 用户多次上传图片时不会重复加载模型，体验会快很多。
     return PaddleOCRAdapter(lang="ch", enable_orientation=True)
 
 
 def main() -> None:
+    # main 是本地调试页面入口：这里只负责页面布局，不直接写识别规则。
+    # 真正的 OCR 识别在 PaddleOCRAdapter，字段提取在 extractor/business_license。
     st.set_page_config(page_title="OCR 识别 Demo", layout="wide")
     _inject_styles()
 
@@ -54,6 +59,8 @@ def _render_document_panel(
     empty_text: str,
     button_label: str,
 ) -> None:
+    # 身份证和营业执照的上传交互基本一样，所以复用这一个面板函数。
+    # document_type 决定后续走哪个字段抽取器。
     uploaded_file = st.file_uploader(
         uploader_label,
         type=["jpg", "jpeg", "png", "bmp", "webp"],
@@ -66,6 +73,8 @@ def _render_document_panel(
         return
 
     try:
+        # 统一转成 RGB，是为了让 PaddleOCR 后面拿到稳定的 3 通道图片。
+        # PNG 透明通道、灰度图等格式在这里都会被归一化。
         image = Image.open(uploaded_file).convert("RGB")
     except UnidentifiedImageError:
         st.error("图片无法读取，请换一张清晰图片。")
@@ -87,6 +96,8 @@ def _render_document_panel(
 def _run_ocr(document_type: DocumentType, image: Image.Image) -> dict[str, Any] | None:
     try:
         with st.spinner("正在识别"):
+            # 这里拿到的是 OCR 原始文本行，还不是身份证/营业执照字段。
+            # 字段结构化在 build_demo_document_result 里根据 document_type 分流。
             lines = get_ocr_adapter().recognize(image)
     except PaddleOCRUnavailableError as exc:
         st.error(str(exc))
@@ -102,9 +113,12 @@ def _run_ocr(document_type: DocumentType, image: Image.Image) -> dict[str, Any] 
 
 
 def build_demo_document_result(document_type: DocumentType, lines: list[OCRLine]) -> dict[str, Any]:
+    # 本地页面展示的 JSON 尽量复用 API 返回格式，方便你边上传调试边对照接口合同。
+    # LOCAL-DEMO 只是页面调试用的订单号；正式 API 会用请求里的 orderNo 或自动生成。
     if document_type == "身份证":
         result = extract_id_card(lines)
         payload = build_id_card_success("LOCAL-DEMO", result)
+        # API 返回里默认不带调试细节；页面为了方便排查，多附加原始文本和内部字段明细。
         payload["data"]["raw_texts"] = result.raw_texts
         payload["data"]["detail"] = result.to_json_dict()
         return payload
@@ -116,6 +130,8 @@ def build_demo_document_result(document_type: DocumentType, lines: list[OCRLine]
 
 
 def _render_result(document_type: DocumentType, payload: dict[str, Any]) -> None:
+    # 先给人看的摘要表，再给机器看的完整 JSON。
+    # 这样你可以快速扫结果，也可以直接复制 JSON 去和外部调用方确认格式。
     if document_type == "身份证":
         _render_id_card_summary(payload)
     else:
@@ -133,6 +149,7 @@ def _render_result(document_type: DocumentType, payload: dict[str, Any]) -> None
 
 
 def _render_id_card_summary(payload: dict[str, Any]) -> None:
+    # 身份证字段带校验状态，所以摘要里额外统计“通过/缺失/疑似错误”。
     data = payload.get("data", {})
     detail = data.get("detail", {})
     fields = detail.get("字段", [])
@@ -157,6 +174,7 @@ def _render_id_card_summary(payload: dict[str, Any]) -> None:
 
 
 def _render_business_license_summary(payload: dict[str, Any]) -> None:
+    # 营业执照没有逐字段置信度和校验状态，页面直接按你确认的 API 字段顺序展示。
     content = payload.get("data", {}).get("content", {})
     summary_rows = [
         {"字段": "统一社会信用代码", "值": content.get("credit_code", "")},
