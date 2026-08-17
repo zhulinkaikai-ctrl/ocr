@@ -2,8 +2,11 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 
+from ocr_api.env_loader import load_env_file
 from ocr_api.routes import router
 
+
+load_env_file()
 
 API_VERSION_PREFIX = "/api/v1"
 

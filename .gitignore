@@ -6,4 +6,6 @@ __pycache__/
 .paddlex_cache/
 .streamlit/secrets.toml
 .env
+.env.local
+.env.prod
 *.log

@@ -7,6 +7,10 @@ from typing import Any, Literal
 import streamlit as st
 from PIL import Image, UnidentifiedImageError
 
+from ocr_api.env_loader import load_env_file
+
+load_env_file()
+
 from id_card_ocr.business_license import extract_business_license
 from id_card_ocr.extractor import extract_id_card
 from id_card_ocr.models import IDCardResult, OCRLine

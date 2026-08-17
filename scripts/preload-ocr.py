@@ -7,6 +7,10 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from ocr_api.env_loader import load_env_file
+
+load_env_file()
+
 from id_card_ocr.paddle_adapter import select_paddle_device
 from id_card_ocr.paddleocr_vl_adapter import PaddleOCRVLAdapter
 from ocr_api.settings import get_settings

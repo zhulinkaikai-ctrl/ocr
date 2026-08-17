@@ -20,6 +20,12 @@ python -m pip install -r requirements.txt
 streamlit run app.py
 ```
 
+本地测试建议使用 `.env.local` 启动上传页面，这样会使用 CPU 并启用图片压缩：
+
+```powershell
+.\scripts\start-demo.ps1 -EnvFile .env.local
+```
+
 浏览器打开 Streamlit 给出的本地地址，在“身份证”或“营业执照”标签页上传图片后点击识别按钮。
 
 第一次运行时，PaddleOCR-VL-1.6 的模型缓存会放在项目目录下的 `.paddlex_cache/`。
