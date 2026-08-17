@@ -11,8 +11,9 @@ from urllib.parse import urlparse
 import httpx
 from PIL import Image, UnidentifiedImageError
 
+from .settings import DEFAULT_MAX_IMAGE_BYTES, get_settings
 
-MAX_IMAGE_BYTES = 10 * 1024 * 1024
+MAX_IMAGE_BYTES = DEFAULT_MAX_IMAGE_BYTES
 # URL 下载时只接受常见图片 MIME 类型。最终仍会交给 Pillow 校验真实内容，
 # 不能只相信远端服务器返回的 Content-Type。
 ALLOWED_IMAGE_CONTENT_TYPES = {
@@ -53,7 +54,7 @@ def decode_base64_image(value: str) -> Image.Image:
 
 def decode_image_bytes(data: bytes) -> Image.Image:
     """验证图片字节，并返回已完整载入内存的 RGB 图片。"""
-    if not data or len(data) > MAX_IMAGE_BYTES:
+    if not data or len(data) > get_settings().max_image_bytes:
         raise ImageInputError("invalid image size")
     try:
         # verify() 只做完整性检查，不解码像素；因此随后要重新 open 一次并 load()。
@@ -109,7 +110,7 @@ async def load_image_from_url(url: str) -> Image.Image:
             if content_type and content_type not in ALLOWED_IMAGE_CONTENT_TYPES:
                 raise ImageInputError("invalid image content type")
             content = response.content
-            if len(content) > MAX_IMAGE_BYTES:
+            if len(content) > get_settings().max_image_bytes:
                 raise ImageInputError("image too large")
             return decode_image_bytes(content)
     raise ImageDownloadError("too many redirects")

@@ -70,6 +70,12 @@ class PaddleAdapterEnvTests(unittest.TestCase):
 
         self.assertEqual(select_paddle_device(fake_paddle), "cpu")
 
+    def test_deployment_env_can_override_device(self):
+        fake_paddle = types.SimpleNamespace(is_compiled_with_cuda=MagicMock(return_value=False))
+
+        with patch.dict(os.environ, {"OCR_DEVICE": "gpu:0"}, clear=False):
+            self.assertEqual(select_paddle_device(fake_paddle), "gpu:0")
+
 
 if __name__ == "__main__":
     unittest.main()

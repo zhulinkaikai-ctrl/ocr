@@ -2,6 +2,7 @@ import base64
 import importlib.util
 import unittest
 from io import BytesIO
+from unittest.mock import patch
 
 from PIL import Image
 
@@ -13,6 +14,10 @@ class ApiRoutesTests(unittest.TestCase):
 
         from api_app import app
         from ocr_api.routes import get_ocr_adapter
+        from ocr_api.settings import clear_settings_cache
+
+        clear_settings_cache()
+        self.addCleanup(clear_settings_cache)
 
         class FakeAdapter:
             def recognize(self, image):
@@ -56,6 +61,29 @@ class ApiRoutesTests(unittest.TestCase):
         self.assertFalse(payload["success"])
         self.assertEqual(payload["code"], 400)
         self.assertEqual(payload["data"]["result"], 1)
+
+    def test_rejects_missing_api_token_when_configured(self):
+        from ocr_api.settings import clear_settings_cache
+
+        with patch.dict("os.environ", {"API_TOKEN": "secret-token"}, clear=False):
+            clear_settings_cache()
+            response = self.client.post("/ocr/id-card", json={"orderNo": "ORDER-AUTH"})
+
+        self.assertEqual(response.status_code, 401)
+
+    def test_accepts_api_token_when_configured(self):
+        from ocr_api.settings import clear_settings_cache
+
+        with patch.dict("os.environ", {"API_TOKEN": "secret-token"}, clear=False):
+            clear_settings_cache()
+            response = self.client.post(
+                "/ocr/id-card",
+                headers={"X-API-Token": "secret-token"},
+                json={"orderNo": "ORDER-1", "imageBase64": _sample_png_base64()},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["success"])
 
     def test_download_error_response(self):
         import ocr_api.routes as routes

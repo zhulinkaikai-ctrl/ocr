@@ -11,6 +11,7 @@ from id_card_ocr.business_license import extract_business_license
 from id_card_ocr.extractor import extract_id_card
 from id_card_ocr.paddle_adapter import PaddleOCRAdapter
 
+from .auth import require_api_token
 from .image_loader import ImageDownloadError, ImageInputError, load_request_image
 from .responses import (
     build_business_license_success,
@@ -40,7 +41,7 @@ async def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
-@router.post("/ocr/id-card")
+@router.post("/ocr/id-card", dependencies=[Depends(require_api_token)])
 async def recognize_id_card(
     request: OCRRequest,
     adapter: Annotated[PaddleOCRAdapter, Depends(get_ocr_adapter)],
@@ -73,7 +74,7 @@ async def recognize_id_card(
         return build_error(order_no, 1001, "OCR识别异常")
 
 
-@router.post("/ocr/business-license")
+@router.post("/ocr/business-license", dependencies=[Depends(require_api_token)])
 async def recognize_business_license(
     request: OCRRequest,
     adapter: Annotated[PaddleOCRAdapter, Depends(get_ocr_adapter)],

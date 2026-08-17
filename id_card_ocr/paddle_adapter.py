@@ -3,10 +3,10 @@ from __future__ import annotations
 import json
 import os
 import inspect
-from pathlib import Path
 from typing import Any
 
 from .models import OCRLine
+from ocr_api.settings import get_settings
 
 
 class PaddleOCRUnavailableError(RuntimeError):
@@ -108,7 +108,7 @@ class PaddleOCRAdapter:
 
 def _configure_paddle_runtime() -> None:
     """配置模型缓存路径，并规避当前 Windows 环境下的 oneDNN/PIR 属性转换错误。"""
-    cache_home = Path(__file__).resolve().parents[1] / ".paddlex_cache"
+    cache_home = get_settings().model_cache_dir
     cache_home.mkdir(parents=True, exist_ok=True)
     os.environ["PADDLE_PDX_CACHE_HOME"] = str(cache_home)
     os.environ["FLAGS_enable_pir_api"] = "0"
@@ -118,6 +118,10 @@ def _configure_paddle_runtime() -> None:
 
 def select_paddle_device(paddle_module: Any | None = None) -> str:
     """安装的是 CUDA 版 Paddle 时使用第一张 GPU，否则回退到 CPU。"""
+    configured_device = get_settings().ocr_device
+    if configured_device:
+        return configured_device
+
     if paddle_module is None:
         try:
             import paddle as paddle_module  # type: ignore[no-redef]
