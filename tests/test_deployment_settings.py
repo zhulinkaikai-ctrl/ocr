@@ -17,7 +17,6 @@ class DeploymentSettingsTests(unittest.TestCase):
                     "MODEL_CACHE_DIR": temp_dir,
                     "MAX_IMAGE_BYTES": "12345",
                     "LOG_LEVEL": "DEBUG",
-                    "API_TOKEN": "secret-token",
                 },
                 clear=False,
             ):
@@ -27,7 +26,6 @@ class DeploymentSettingsTests(unittest.TestCase):
         self.assertEqual(settings.model_cache_dir, Path(temp_dir))
         self.assertEqual(settings.max_image_bytes, 12345)
         self.assertEqual(settings.log_level, "DEBUG")
-        self.assertEqual(settings.api_token, "secret-token")
 
     def test_rejects_invalid_max_image_bytes(self):
         from ocr_api.settings import AppSettings

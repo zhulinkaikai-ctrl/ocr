@@ -62,23 +62,13 @@ class ApiRoutesTests(unittest.TestCase):
         self.assertEqual(payload["code"], 400)
         self.assertEqual(payload["data"]["result"], 1)
 
-    def test_rejects_missing_api_token_when_configured(self):
-        from ocr_api.settings import clear_settings_cache
-
-        with patch.dict("os.environ", {"API_TOKEN": "secret-token"}, clear=False):
-            clear_settings_cache()
-            response = self.client.post("/ocr/id-card", json={"orderNo": "ORDER-AUTH"})
-
-        self.assertEqual(response.status_code, 401)
-
-    def test_accepts_api_token_when_configured(self):
+    def test_ignores_api_token_env(self):
         from ocr_api.settings import clear_settings_cache
 
         with patch.dict("os.environ", {"API_TOKEN": "secret-token"}, clear=False):
             clear_settings_cache()
             response = self.client.post(
                 "/ocr/id-card",
-                headers={"X-API-Token": "secret-token"},
                 json={"orderNo": "ORDER-1", "imageBase64": _sample_png_base64()},
             )
 

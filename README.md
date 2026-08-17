@@ -60,6 +60,8 @@ curl -X POST http://127.0.0.1:8000/ocr/business-license `
   -d "{\"orderNo\":\"ORDER-2\",\"imageUrl\":\"https://example.com/license.jpg\"}"
 ```
 
+手动部署到服务器请看：`docs/deploy-manual.md`
+
 ## 输出
 
 页面会展示：

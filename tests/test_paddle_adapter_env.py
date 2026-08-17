@@ -6,9 +6,14 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from id_card_ocr.paddle_adapter import PaddleOCRAdapter, select_paddle_device
+from ocr_api.settings import clear_settings_cache
 
 
 class PaddleAdapterEnvTests(unittest.TestCase):
+    def setUp(self):
+        clear_settings_cache()
+        self.addCleanup(clear_settings_cache)
+
     def test_sets_runtime_env_before_importing_paddleocr(self):
         captured = {}
 
@@ -74,6 +79,7 @@ class PaddleAdapterEnvTests(unittest.TestCase):
         fake_paddle = types.SimpleNamespace(is_compiled_with_cuda=MagicMock(return_value=False))
 
         with patch.dict(os.environ, {"OCR_DEVICE": "gpu:0"}, clear=False):
+            clear_settings_cache()
             self.assertEqual(select_paddle_device(fake_paddle), "gpu:0")
 
 
