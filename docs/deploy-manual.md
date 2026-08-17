@@ -3,7 +3,7 @@
 本文档说明如何在不使用 Docker 的情况下部署 OCR API 服务。当前推荐部署方式是：
 
 ```text
-Java 业务系统 -> HTTP 调用 -> Python FastAPI OCR 服务 -> PaddleOCR 模型
+Java 业务系统 -> HTTP 调用 -> Python FastAPI OCR 服务 -> PaddleOCR-VL-1.6 模型
 ```
 
 生产环境主要部署 `api_app.py` 提供的 FastAPI 服务；`app.py` 是本地上传调试页面，可以按需启动。
@@ -46,6 +46,7 @@ __pycache__/
 
 ```text
 OCR_DEVICE=gpu:0
+OCR_ENGINE=paddleocr_vl
 MODEL_CACHE_DIR=.paddlex_cache
 MAX_IMAGE_BYTES=10485760
 LOG_LEVEL=INFO
@@ -54,7 +55,8 @@ LOG_LEVEL=INFO
 配置说明：
 
 - `OCR_DEVICE`：OCR 运行设备。GPU 服务器填 `gpu:0`；留空则自动判断。
-- `MODEL_CACHE_DIR`：PaddleOCR 模型缓存目录，生产环境可以改成绝对路径。
+- `OCR_ENGINE`：当前分支固定使用 `paddleocr_vl`，也就是 PaddleOCR-VL-1.6。
+- `MODEL_CACHE_DIR`：PaddleOCR-VL 模型缓存目录，生产环境可以改成绝对路径。
 - `MAX_IMAGE_BYTES`：单张图片最大字节数，默认 10MB。
 - `LOG_LEVEL`：日志级别，生产环境建议 `INFO`。
 
@@ -99,6 +101,7 @@ GPU 示例：
 
 ```text
 OCR_DEVICE=gpu:0
+OCR_ENGINE=paddleocr_vl
 MODEL_CACHE_DIR=D:\services\tesrtOCR\.paddlex_cache
 MAX_IMAGE_BYTES=10485760
 LOG_LEVEL=INFO
@@ -108,6 +111,7 @@ CPU 示例：
 
 ```text
 OCR_DEVICE=
+OCR_ENGINE=paddleocr_vl
 MODEL_CACHE_DIR=D:\services\tesrtOCR\.paddlex_cache
 MAX_IMAGE_BYTES=10485760
 LOG_LEVEL=INFO
@@ -119,7 +123,7 @@ LOG_LEVEL=INFO
 .\.venv\Scripts\python.exe scripts\preload-ocr.py
 ```
 
-这一步用于提前下载/加载 PaddleOCR 模型，避免第一次 Java 请求耗时过长。
+这一步用于提前下载/加载 PaddleOCR-VL-1.6 模型，避免第一次 Java 请求耗时过长。
 
 ### 6. 手动启动 API
 
@@ -209,6 +213,7 @@ GPU 示例：
 
 ```text
 OCR_DEVICE=gpu:0
+OCR_ENGINE=paddleocr_vl
 MODEL_CACHE_DIR=/opt/tesrtOCR/.paddlex_cache
 MAX_IMAGE_BYTES=10485760
 LOG_LEVEL=INFO
@@ -218,6 +223,7 @@ CPU 示例：
 
 ```text
 OCR_DEVICE=
+OCR_ENGINE=paddleocr_vl
 MODEL_CACHE_DIR=/opt/tesrtOCR/.paddlex_cache
 MAX_IMAGE_BYTES=10485760
 LOG_LEVEL=INFO
@@ -350,7 +356,20 @@ python scripts/preload-ocr.py
 
 首次运行可能会下载或初始化模型，这是正常现象。
 
-### 3. oneDNN/PIR 报错
+### 3. Windows 报“页面文件太小”或 `os error 1455`
+
+这是 Windows 在加载 PaddleOCR-VL-1.6 大模型时内存提交量不足导致的，通常不是接口代码问题。
+
+处理建议：
+
+- 关闭其他占用内存或显存的程序。
+- 用 `nvidia-smi` 确认没有其他 Python 进程占用 GPU。
+- 把 Windows 虚拟内存改成系统管理，或手动设置为 32GB 到 64GB。
+- 修改虚拟内存后重启电脑，再执行 `python scripts/preload-ocr.py`。
+
+当前项目使用 PaddleOCR-VL-1.6，4GB 显存机器可以尝试加载，但运行会比较吃紧。生产环境建议使用显存更大的 NVIDIA GPU。
+
+### 4. oneDNN/PIR 报错
 
 项目已在 `id_card_ocr/paddle_adapter.py` 中设置运行时参数：
 
@@ -362,7 +381,7 @@ FLAGS_use_mkldnn=0
 
 如果仍然报错，确认服务启动时使用的是最新代码。
 
-### 4. Java 调用超时
+### 5. Java 调用超时
 
 建议 Java HTTP 客户端设置：
 
@@ -370,7 +389,7 @@ FLAGS_use_mkldnn=0
 - 读取超时：30 到 60 秒。
 - 图片大小：尽量控制在 10MB 以内。
 
-### 5. 无法访问服务
+### 6. 无法访问服务
 
 检查：
 

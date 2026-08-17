@@ -21,6 +21,7 @@ class AppSettings:
     max_image_bytes: int
     model_cache_dir: Path
     ocr_device: str | None
+    ocr_engine: str
 
     @classmethod
     def from_env(cls) -> "AppSettings":
@@ -30,6 +31,7 @@ class AppSettings:
             max_image_bytes=_positive_int("MAX_IMAGE_BYTES", DEFAULT_MAX_IMAGE_BYTES),
             model_cache_dir=_path("MODEL_CACHE_DIR", PROJECT_ROOT / ".paddlex_cache"),
             ocr_device=_optional_text("OCR_DEVICE"),
+            ocr_engine=_ocr_engine("OCR_ENGINE", "paddleocr_vl"),
         )
 
 
@@ -70,3 +72,17 @@ def _optional_text(name: str) -> str | None:
         return None
     value = value.strip()
     return value or None
+
+
+def _ocr_engine(name: str, default: str) -> str:
+    value = os.environ.get(name, default).strip().lower() or default
+    aliases = {
+        "paddleocr_vl": "paddleocr_vl",
+        "paddleocr-vl": "paddleocr_vl",
+        "paddleocrvl": "paddleocr_vl",
+        "paddleocr-vl-1.6": "paddleocr_vl",
+        "vl": "paddleocr_vl",
+    }
+    if value not in aliases:
+        raise ValueError(f"{name} 当前分支只支持 PaddleOCR-VL-1.6")
+    return aliases[value]

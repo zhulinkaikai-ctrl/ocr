@@ -45,7 +45,7 @@ BACK_FIELDS = [
 
 
 def extract_id_card(lines: list[OCRLine]) -> IDCardResult:
-    """把 PaddleOCR 的文本行转换成结构化身份证结果。
+    """把 OCR 文本行转换成结构化身份证结果。
 
     输入示例：OCRLine("姓名张三", 0.98)
     输出内容：证件面、字段值、字段校验状态、原始 OCR 文本。

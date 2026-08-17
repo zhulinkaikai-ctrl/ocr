@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends
 
 from id_card_ocr.business_license import extract_business_license
 from id_card_ocr.extractor import extract_id_card
-from id_card_ocr.paddle_adapter import PaddleOCRAdapter
+from id_card_ocr.paddleocr_vl_adapter import PaddleOCRVLAdapter
 
 from .image_loader import ImageDownloadError, ImageInputError, load_request_image
 from .responses import (
@@ -24,14 +24,14 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-def get_ocr_adapter() -> PaddleOCRAdapter:
+def get_ocr_adapter() -> PaddleOCRVLAdapter:
     """创建 OCR 适配器。
 
     这个函数单独存在，是为了使用 FastAPI 的依赖注入：
-    正式运行时返回真实 PaddleOCR，测试时可以替换成 FakeAdapter，
+    正式运行时返回真实 PaddleOCR-VL，测试时可以替换成 FakeAdapter，
     避免每次跑接口测试都加载大模型。
     """
-    return PaddleOCRAdapter(lang="ch", enable_orientation=True)
+    return PaddleOCRVLAdapter(enable_orientation=True)
 
 
 @router.get("/health")
@@ -42,7 +42,7 @@ async def health() -> dict[str, int]:
 @router.post("/ocr/id-card")
 async def recognize_id_card(
     request: OCRRequest,
-    adapter: Annotated[PaddleOCRAdapter, Depends(get_ocr_adapter)],
+    adapter: Annotated[PaddleOCRVLAdapter, Depends(get_ocr_adapter)],
 ) -> dict:
     """识别身份证，并返回双方约定的统一响应结构。"""
     order_no = _order_no(request.orderNo)
@@ -58,7 +58,7 @@ async def recognize_id_card(
         return build_error(order_no, 1001, "OCR识别异常")
 
     try:
-        # 第一步：PaddleOCR 把图片转成若干 OCRLine。
+        # 第一步：PaddleOCR-VL 把图片转成若干 OCRLine。
         # 第二步：extract_id_card 再从文本行中提取姓名、证件号等业务字段。
         lines = adapter.recognize(image)
         result = extract_id_card(lines)
@@ -75,7 +75,7 @@ async def recognize_id_card(
 @router.post("/ocr/business-license")
 async def recognize_business_license(
     request: OCRRequest,
-    adapter: Annotated[PaddleOCRAdapter, Depends(get_ocr_adapter)],
+    adapter: Annotated[PaddleOCRVLAdapter, Depends(get_ocr_adapter)],
 ) -> dict:
     """识别营业执照，并返回 content 字段集合。"""
     order_no = _order_no(request.orderNo)

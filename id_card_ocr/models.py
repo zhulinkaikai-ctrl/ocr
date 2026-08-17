@@ -11,7 +11,7 @@ STATUS_SUSPICIOUS = "疑似错误"
 
 @dataclass(frozen=True)
 class OCRLine:
-    """PaddleOCR 识别出来的一行文字。
+    """OCR 引擎识别出来的一行文字。
 
     text 是文字内容，confidence 是这一行的置信度，box 是文本框坐标。
     字段提取器只强依赖 text，后两项主要用于页面展示和排查问题。

@@ -10,7 +10,8 @@ from PIL import Image, UnidentifiedImageError
 from id_card_ocr.business_license import extract_business_license
 from id_card_ocr.extractor import extract_id_card
 from id_card_ocr.models import IDCardResult, OCRLine
-from id_card_ocr.paddle_adapter import PaddleOCRAdapter, PaddleOCRUnavailableError
+from id_card_ocr.paddle_adapter import PaddleOCRUnavailableError
+from id_card_ocr.paddleocr_vl_adapter import PaddleOCRVLAdapter
 from ocr_api.responses import build_business_license_success, build_id_card_success
 
 
@@ -19,15 +20,15 @@ DocumentType = Literal["身份证", "营业执照"]
 
 
 @st.cache_resource(show_spinner=False)
-def get_ocr_adapter() -> PaddleOCRAdapter:
-    # PaddleOCR 模型初始化比较慢，所以 Streamlit 会缓存这个对象。
+def get_ocr_adapter() -> PaddleOCRVLAdapter:
+    # PaddleOCR-VL-1.6 模型初始化比较慢，所以 Streamlit 会缓存这个对象。
     # 用户多次上传图片时不会重复加载模型，体验会快很多。
-    return PaddleOCRAdapter(lang="ch", enable_orientation=True)
+    return PaddleOCRVLAdapter(enable_orientation=True)
 
 
 def main() -> None:
     # main 是本地调试页面入口：这里只负责页面布局，不直接写识别规则。
-    # 真正的 OCR 识别在 PaddleOCRAdapter，字段提取在 extractor/business_license。
+    # 真正的 OCR 识别在 PaddleOCRVLAdapter，字段提取在 extractor/business_license。
     st.set_page_config(page_title="OCR 识别 Demo", layout="wide")
     _inject_styles()
 
@@ -73,7 +74,7 @@ def _render_document_panel(
         return
 
     try:
-        # 统一转成 RGB，是为了让 PaddleOCR 后面拿到稳定的 3 通道图片。
+        # 统一转成 RGB，是为了让 PaddleOCR-VL 后面拿到稳定的 3 通道图片。
         # PNG 透明通道、灰度图等格式在这里都会被归一化。
         image = Image.open(uploaded_file).convert("RGB")
     except UnidentifiedImageError:

@@ -1,6 +1,6 @@
 # OCR 本地 Demo
 
-本项目是一个本地运行的 Streamlit Demo，用 PaddleOCR 识别居民身份证和营业执照图片，并输出结构化字段。
+本项目是一个本地运行的 Streamlit Demo，用 PaddleOCR-VL-1.6 识别居民身份证和营业执照图片，并输出结构化字段。
 
 ## 安装
 
@@ -10,7 +10,7 @@
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
-python -m pip install paddlepaddle -i https://www.paddlepaddle.org.cn/packages/stable/cpu/
+python -m pip install paddlepaddle-gpu
 python -m pip install -r requirements.txt
 ```
 
@@ -22,7 +22,7 @@ streamlit run app.py
 
 浏览器打开 Streamlit 给出的本地地址，在“身份证”或“营业执照”标签页上传图片后点击识别按钮。
 
-第一次运行时，PaddleOCR 的模型缓存会放在项目目录下的 `.paddlex_cache/`。
+第一次运行时，PaddleOCR-VL-1.6 的模型缓存会放在项目目录下的 `.paddlex_cache/`。
 
 ## API 服务
 

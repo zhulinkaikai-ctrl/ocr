@@ -29,7 +29,7 @@ BUSINESS_LICENSE_KEYS = [
 def extract_business_license(lines: list[OCRLine]) -> dict[str, str | int]:
     """从 OCR 文本行中提取营业执照字段。
 
-    PaddleOCR 只提供“识别到了哪些文字”。这里通过标签规则把文字转换成
+    OCR 引擎只提供“识别到了哪些文字”。这里通过标签规则把文字转换成
     enterprise_name、credit_code、address 等 API 字段。
     """
     # OCR 常把标签和值识别在同一行，也可能拆成两行；先去掉空白方便统一匹配。

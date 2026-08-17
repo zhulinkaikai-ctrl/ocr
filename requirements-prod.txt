@@ -7,5 +7,5 @@ httpx==0.28.1
 pillow==12.3.0
 numpy==2.3.5
 paddleocr==3.7.0
-paddlex==3.7.2
+paddlex[ocr]==3.7.2
 paddlepaddle-gpu==3.2.2
