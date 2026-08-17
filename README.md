@@ -20,7 +20,7 @@ python -m pip install -r requirements.txt
 streamlit run app.py
 ```
 
-本地测试建议使用 `.env.local` 启动上传页面，这样会使用 CPU 并启用图片压缩：
+本地测试建议使用 `.env.local` 启动上传页面，这样会使用本机 GPU 并启用图片压缩：
 
 ```powershell
 .\scripts\start-demo.ps1 -EnvFile .env.local
@@ -39,7 +39,7 @@ copy .env.local.example .env.local
 .\scripts\start-api.ps1 -EnvFile .env.local -BindHost 0.0.0.0 -Port 8000
 ```
 
-本地测试环境默认使用 CPU，并通过 `OCR_COMPRESS_MAX_SIDE=1280` 压缩图片；正式环境使用 `.env.prod.example`，默认 GPU 且不压缩图片。
+本地测试环境默认使用 `gpu:0`，并通过 `OCR_COMPRESS_MAX_SIDE=1280` 压缩图片；正式环境使用 `.env.prod.example`，默认 GPU 且不压缩图片。
 
 接口文档：
 
