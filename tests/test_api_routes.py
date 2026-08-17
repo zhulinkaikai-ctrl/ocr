@@ -39,7 +39,7 @@ class ApiRoutesTests(unittest.TestCase):
         response = self.client.get("/api/v1/health")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["status"], "ok")
+        self.assertEqual(response.json()["status"], 200)
 
     def test_id_card_success_response(self):
         response = self.client.post(

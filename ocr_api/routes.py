@@ -35,8 +35,8 @@ def get_ocr_adapter() -> PaddleOCRAdapter:
 
 
 @router.get("/health")
-async def health() -> dict[str, str]:
-    return {"status": "ok"}
+async def health() -> dict[str, int]:
+    return {"status": 200}
 
 
 @router.post("/ocr/id-card")

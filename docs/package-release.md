@@ -196,7 +196,7 @@ http://服务器IP:8000/api/v1/health
 返回：
 
 ```json
-{"status":"ok"}
+{"status":200}
 ```
 
 再访问接口文档：
