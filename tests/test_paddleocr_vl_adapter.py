@@ -5,6 +5,8 @@ import types
 import unittest
 from unittest.mock import patch
 
+from PIL import Image
+
 from id_card_ocr.paddleocr_vl_adapter import (
     PaddleOCRVLAdapter,
     normalize_paddleocr_vl_result,
@@ -78,6 +80,41 @@ class PaddleOCRVLAdapterTests(unittest.TestCase):
                 PaddleOCRVLAdapter()._get_engine()
 
         self.assertIn("paddlex[ocr]", str(context.exception))
+
+    def test_compresses_image_only_when_local_env_sets_max_side(self):
+        captured = {}
+
+        class FakeEngine:
+            def predict(self, **kwargs):
+                captured.update(kwargs)
+                return []
+
+        with patch.dict(os.environ, {"OCR_COMPRESS_MAX_SIDE": "640"}, clear=False):
+            clear_settings_cache()
+            adapter = PaddleOCRVLAdapter()
+            adapter._engine = FakeEngine()
+
+            adapter.recognize(Image.new("RGB", (2000, 1000), "white"))
+
+        height, width = captured["input"].shape[:2]
+        self.assertEqual(max(width, height), 640)
+
+    def test_keeps_original_image_when_compression_is_not_configured(self):
+        captured = {}
+
+        class FakeEngine:
+            def predict(self, **kwargs):
+                captured.update(kwargs)
+                return []
+
+        clear_settings_cache()
+        adapter = PaddleOCRVLAdapter()
+        adapter._engine = FakeEngine()
+
+        adapter.recognize(Image.new("RGB", (2000, 1000), "white"))
+
+        height, width = captured["input"].shape[:2]
+        self.assertEqual((width, height), (2000, 1000))
 
 
 if __name__ == "__main__":

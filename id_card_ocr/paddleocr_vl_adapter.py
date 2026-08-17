@@ -11,6 +11,7 @@ from .paddle_adapter import (
     normalize_paddle_result,
     select_paddle_device,
 )
+from ocr_api.settings import get_settings
 
 
 class PaddleOCRVLAdapter:
@@ -28,7 +29,8 @@ class PaddleOCRVLAdapter:
     def recognize(self, image: Any) -> list[OCRLine]:
         """识别图片，并把 VL 结果压平成业务提取器可消费的 OCRLine。"""
         engine = self._get_engine()
-        result = engine.predict(input=_to_numpy_image(image))
+        prepared_image = _compress_image_if_configured(image, get_settings().ocr_compress_max_side)
+        result = engine.predict(input=_to_numpy_image(prepared_image))
         return normalize_paddleocr_vl_result(result)
 
     def _get_engine(self) -> Any:
@@ -82,6 +84,20 @@ def normalize_paddleocr_vl_result(result: Any) -> list[OCRLine]:
         texts.extend(_extract_texts_from_vl_mapping(data))
 
     return [OCRLine(text=text, confidence=None) for text in _dedupe_texts(texts)]
+
+
+def _compress_image_if_configured(image: Any, max_side: int | None) -> Any:
+    """本地测试可通过环境变量压缩图片；正式环境不配置时保持原图。"""
+    if max_side is None or not hasattr(image, "size") or not hasattr(image, "copy"):
+        return image
+
+    width, height = image.size
+    if max(width, height) <= max_side:
+        return image
+
+    resized = image.copy()
+    resized.thumbnail((max_side, max_side))
+    return resized
 
 
 def _extract_texts_from_vl_mapping(data: dict[str, Any]) -> list[str]:

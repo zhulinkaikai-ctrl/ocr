@@ -20,6 +20,8 @@ ocr_api/
 tests/
 requirements-prod.txt
 .env.example
+.env.local.example
+.env.prod.example
 scripts/
 deploy/
 docs/
@@ -67,6 +69,8 @@ Copy-Item api_app.py $ReleaseDir
 Copy-Item app.py $ReleaseDir
 Copy-Item requirements-prod.txt $ReleaseDir
 Copy-Item .env.example $ReleaseDir
+Copy-Item .env.local.example $ReleaseDir
+Copy-Item .env.prod.example $ReleaseDir
 Copy-Item README.md $ReleaseDir
 
 Copy-Item id_card_ocr $ReleaseDir -Recurse
@@ -106,6 +110,8 @@ cp api_app.py "$RELEASE_DIR/"
 cp app.py "$RELEASE_DIR/"
 cp requirements-prod.txt "$RELEASE_DIR/"
 cp .env.example "$RELEASE_DIR/"
+cp .env.local.example "$RELEASE_DIR/"
+cp .env.prod.example "$RELEASE_DIR/"
 cp README.md "$RELEASE_DIR/"
 
 cp -r id_card_ocr "$RELEASE_DIR/"
@@ -152,6 +158,8 @@ id_card_ocr/
 ocr_api/
 requirements-prod.txt
 .env.example
+.env.local.example
+.env.prod.example
 scripts/
 deploy/
 docs/
@@ -168,21 +176,21 @@ docs/
 Windows 部署入口：
 
 ```powershell
-copy .env.example .env
+copy .env.prod.example .env
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements-prod.txt
 .\.venv\Scripts\python.exe scripts\preload-ocr.py
-.\scripts\start-api.ps1 -BindHost 0.0.0.0 -Port 8000
+.\scripts\start-api.ps1 -EnvFile .env -BindHost 0.0.0.0 -Port 8000
 ```
 
 Linux 部署入口：
 
 ```bash
-cp .env.example .env
+cp .env.prod.example .env
 python3 -m venv .venv
 ./.venv/bin/python -m pip install -r requirements-prod.txt
 ./.venv/bin/python scripts/preload-ocr.py
-bash scripts/start-api.sh
+bash scripts/start-api.sh .env
 ```
 
 ## 六、打包后验证

@@ -19,6 +19,8 @@ id_card_ocr/
 ocr_api/
 requirements-prod.txt
 .env.example
+.env.local.example
+.env.prod.example
 scripts/
 deploy/
 docs/deploy-manual.md
@@ -42,12 +44,13 @@ __pycache__/
 
 ## 二、通用配置说明
 
-部署前复制 `.env.example` 为 `.env`。
+部署前复制 `.env.prod.example` 为 `.env`。本地测试可以复制 `.env.local.example` 为 `.env.local`。
 
 ```text
 OCR_DEVICE=gpu:0
 OCR_ENGINE=paddleocr_vl
 MODEL_CACHE_DIR=.paddlex_cache
+OCR_COMPRESS_MAX_SIDE=
 MAX_IMAGE_BYTES=10485760
 LOG_LEVEL=INFO
 ```
@@ -57,6 +60,7 @@ LOG_LEVEL=INFO
 - `OCR_DEVICE`：OCR 运行设备。GPU 服务器填 `gpu:0`；留空则自动判断。
 - `OCR_ENGINE`：当前分支固定使用 `paddleocr_vl`，也就是 PaddleOCR-VL-1.6。
 - `MODEL_CACHE_DIR`：PaddleOCR-VL 模型缓存目录，生产环境可以改成绝对路径。
+- `OCR_COMPRESS_MAX_SIDE`：本地测试图片压缩开关。正式环境留空；本地 4GB 显存机器可填 `1280`。
 - `MAX_IMAGE_BYTES`：单张图片最大字节数，默认 10MB。
 - `LOG_LEVEL`：日志级别，生产环境建议 `INFO`。
 
@@ -93,7 +97,7 @@ python -m venv .venv
 ### 4. 配置 `.env`
 
 ```powershell
-copy .env.example .env
+copy .env.prod.example .env
 notepad .env
 ```
 
@@ -103,6 +107,7 @@ GPU 示例：
 OCR_DEVICE=gpu:0
 OCR_ENGINE=paddleocr_vl
 MODEL_CACHE_DIR=D:\services\tesrtOCR\.paddlex_cache
+OCR_COMPRESS_MAX_SIDE=
 MAX_IMAGE_BYTES=10485760
 LOG_LEVEL=INFO
 ```
@@ -113,6 +118,7 @@ CPU 示例：
 OCR_DEVICE=
 OCR_ENGINE=paddleocr_vl
 MODEL_CACHE_DIR=D:\services\tesrtOCR\.paddlex_cache
+OCR_COMPRESS_MAX_SIDE=1280
 MAX_IMAGE_BYTES=10485760
 LOG_LEVEL=INFO
 ```
@@ -128,7 +134,7 @@ LOG_LEVEL=INFO
 ### 6. 手动启动 API
 
 ```powershell
-.\scripts\start-api.ps1 -BindHost 0.0.0.0 -Port 8000
+.\scripts\start-api.ps1 -EnvFile .env -BindHost 0.0.0.0 -Port 8000
 ```
 
 验证服务：
@@ -205,7 +211,7 @@ python3 -m venv .venv
 ### 4. 配置 `.env`
 
 ```bash
-cp .env.example .env
+cp .env.prod.example .env
 vi .env
 ```
 
@@ -215,6 +221,7 @@ GPU 示例：
 OCR_DEVICE=gpu:0
 OCR_ENGINE=paddleocr_vl
 MODEL_CACHE_DIR=/opt/tesrtOCR/.paddlex_cache
+OCR_COMPRESS_MAX_SIDE=
 MAX_IMAGE_BYTES=10485760
 LOG_LEVEL=INFO
 ```
@@ -225,6 +232,7 @@ CPU 示例：
 OCR_DEVICE=
 OCR_ENGINE=paddleocr_vl
 MODEL_CACHE_DIR=/opt/tesrtOCR/.paddlex_cache
+OCR_COMPRESS_MAX_SIDE=1280
 MAX_IMAGE_BYTES=10485760
 LOG_LEVEL=INFO
 ```
@@ -238,7 +246,7 @@ LOG_LEVEL=INFO
 ### 6. 手动启动 API
 
 ```bash
-bash scripts/start-api.sh
+bash scripts/start-api.sh .env
 ```
 
 验证服务：

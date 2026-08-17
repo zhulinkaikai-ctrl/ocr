@@ -22,6 +22,7 @@ class AppSettings:
     model_cache_dir: Path
     ocr_device: str | None
     ocr_engine: str
+    ocr_compress_max_side: int | None
 
     @classmethod
     def from_env(cls) -> "AppSettings":
@@ -32,6 +33,7 @@ class AppSettings:
             model_cache_dir=_path("MODEL_CACHE_DIR", PROJECT_ROOT / ".paddlex_cache"),
             ocr_device=_optional_text("OCR_DEVICE"),
             ocr_engine=_ocr_engine("OCR_ENGINE", "paddleocr_vl"),
+            ocr_compress_max_side=_optional_positive_int("OCR_COMPRESS_MAX_SIDE"),
         )
 
 
@@ -72,6 +74,19 @@ def _optional_text(name: str) -> str | None:
         return None
     value = value.strip()
     return value or None
+
+
+def _optional_positive_int(name: str) -> int | None:
+    raw = os.environ.get(name)
+    if raw is None or raw.strip() == "":
+        return None
+    try:
+        value = int(raw)
+    except ValueError as exc:
+        raise ValueError(f"{name} 必须是整数") from exc
+    if value <= 0:
+        raise ValueError(f"{name} 必须大于 0")
+    return value
 
 
 def _ocr_engine(name: str, default: str) -> str:

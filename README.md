@@ -29,8 +29,11 @@ streamlit run app.py
 启动 FastAPI 服务：
 
 ```powershell
-uvicorn api_app:app --host 0.0.0.0 --port 8000
+copy .env.local.example .env.local
+.\scripts\start-api.ps1 -EnvFile .env.local -BindHost 0.0.0.0 -Port 8000
 ```
+
+本地测试环境默认使用 CPU，并通过 `OCR_COMPRESS_MAX_SIDE=1280` 压缩图片；正式环境使用 `.env.prod.example`，默认 GPU 且不压缩图片。
 
 接口文档：
 

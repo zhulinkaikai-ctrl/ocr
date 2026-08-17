@@ -4,10 +4,12 @@ set -euo pipefail
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$PROJECT_ROOT"
 
-if [[ -f ".env" ]]; then
+ENV_FILE="${ENV_FILE:-${1:-.env}}"
+
+if [[ -f "$ENV_FILE" ]]; then
   set -a
   # shellcheck disable=SC1091
-  source ".env"
+  source "$ENV_FILE"
   set +a
 fi
 
