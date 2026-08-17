@@ -51,9 +51,9 @@ def _positive_int(name: str, default: int) -> int:
     try:
         value = int(raw)
     except ValueError as exc:
-        raise ValueError(f"{name} must be an integer") from exc
+        raise ValueError(f"{name} 必须是整数") from exc
     if value <= 0:
-        raise ValueError(f"{name} must be greater than 0")
+        raise ValueError(f"{name} 必须大于 0")
     return value
 
 

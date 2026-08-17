@@ -9,9 +9,9 @@ def main() -> None:
     print(f"OCR device: {settings.ocr_device or select_paddle_device()}")
     print(f"Model cache: {settings.model_cache_dir}")
 
-    # Initializing the engine downloads/loads PaddleOCR models before real traffic arrives.
+    # 初始化引擎会提前下载/加载 PaddleOCR 模型，避免真实请求首次命中时变慢。
     PaddleOCRAdapter(lang="ch", enable_orientation=True)._get_engine()
-    print("PaddleOCR preload finished.")
+    print("PaddleOCR 模型预加载完成。")
 
 
 if __name__ == "__main__":

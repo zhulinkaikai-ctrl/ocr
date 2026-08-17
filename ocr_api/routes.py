@@ -36,7 +36,6 @@ def get_ocr_adapter() -> PaddleOCRAdapter:
 
 @router.get("/health")
 async def health() -> dict[str, str]:
-    """供部署平台或调用方检查服务进程是否存活。"""
     return {"status": "ok"}
 
 
@@ -69,7 +68,7 @@ async def recognize_id_card(
         return build_id_card_success(order_no, result)
     except Exception:
         # 对外不暴露底层堆栈或模型信息，详细异常只记到服务日志。
-        logger.exception("ID-card OCR failed, orderNo=%s", order_no)
+        logger.exception("身份证 OCR 识别异常，orderNo=%s", order_no)
         return build_error(order_no, 1001, "OCR识别异常")
 
 
@@ -95,7 +94,7 @@ async def recognize_business_license(
             return build_error(order_no, 1001, "OCR识别异常")
         return build_business_license_success(order_no, content)
     except Exception:
-        logger.exception("Business-license OCR failed, orderNo=%s", order_no)
+        logger.exception("营业执照 OCR 识别异常，orderNo=%s", order_no)
         return build_error(order_no, 1001, "OCR识别异常")
 
 

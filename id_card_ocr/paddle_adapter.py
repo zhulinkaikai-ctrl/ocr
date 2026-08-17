@@ -49,7 +49,7 @@ class PaddleOCRAdapter:
             return normalize_paddle_result(result)
 
         raise PaddleOCRUnavailableError(
-            "The current PaddleOCR instance does not support predict or ocr."
+            "当前 PaddleOCR 实例不支持 predict 或 ocr 接口。"
         )
 
     def _get_engine(self) -> Any:
@@ -64,7 +64,7 @@ class PaddleOCRAdapter:
             from paddleocr import PaddleOCR
         except Exception as exc:
             raise PaddleOCRUnavailableError(
-                "PaddleOCR is not installed. Install paddleocr and paddlepaddle first."
+                "未安装 PaddleOCR，请先安装 paddleocr 和 paddlepaddle。"
             ) from exc
 
         # PaddleOCR 不同版本接受的初始化参数不同，从新接口到旧接口逐级尝试。
@@ -101,9 +101,9 @@ class PaddleOCRAdapter:
                 errors.append(str(exc))
                 continue
             except Exception as exc:
-                raise PaddleOCRUnavailableError(f"PaddleOCR initialization failed: {exc}") from exc
+                raise PaddleOCRUnavailableError(f"PaddleOCR 初始化失败：{exc}") from exc
 
-        raise PaddleOCRUnavailableError("PaddleOCR initialization parameters are incompatible: " + " | ".join(errors))
+        raise PaddleOCRUnavailableError("PaddleOCR 初始化参数与当前版本不兼容：" + " | ".join(errors))
 
 
 def _configure_paddle_runtime() -> None:
@@ -248,7 +248,7 @@ def _to_numpy_image(image: Any) -> Any:
     try:
         import numpy as np
     except Exception as exc:
-        raise PaddleOCRUnavailableError("numpy is required to convert images for PaddleOCR.") from exc
+        raise PaddleOCRUnavailableError("缺少 numpy，无法将图片转换为 PaddleOCR 所需格式。") from exc
 
     if hasattr(image, "convert"):
         return np.array(image.convert("RGB"))

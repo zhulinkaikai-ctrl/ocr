@@ -41,21 +41,21 @@ def decode_base64_image(value: str) -> Image.Image:
     """把普通 Base64 或 data:image/... 格式解码为 RGB 图片。"""
     raw = (value or "").strip()
     if not raw:
-        raise ImageInputError("empty base64 image")
+        raise ImageInputError("Base64 图片为空")
     # 浏览器经常生成 data:image/png;base64,xxxx，需要先去掉逗号前的元信息。
     if "," in raw and raw.lower().startswith("data:"):
         raw = raw.split(",", 1)[1]
     try:
         data = base64.b64decode(raw, validate=True)
     except (binascii.Error, ValueError) as exc:
-        raise ImageInputError("invalid base64 image") from exc
+        raise ImageInputError("Base64 图片格式不正确") from exc
     return decode_image_bytes(data)
 
 
 def decode_image_bytes(data: bytes) -> Image.Image:
     """验证图片字节，并返回已完整载入内存的 RGB 图片。"""
     if not data or len(data) > get_settings().max_image_bytes:
-        raise ImageInputError("invalid image size")
+        raise ImageInputError("图片大小不合法")
     try:
         # verify() 只做完整性检查，不解码像素；因此随后要重新 open 一次并 load()。
         image = Image.open(BytesIO(data))
@@ -63,7 +63,7 @@ def decode_image_bytes(data: bytes) -> Image.Image:
         image = Image.open(BytesIO(data))
         image.load()
     except (UnidentifiedImageError, OSError) as exc:
-        raise ImageInputError("invalid image content") from exc
+        raise ImageInputError("图片内容无法识别") from exc
     image_format = image.format
     converted = image.convert("RGB")
     converted.format = image_format
@@ -74,10 +74,10 @@ def validate_public_image_url(url: str) -> str:
     """只允许访问公网 HTTP/HTTPS 图片，防止 SSRF 读取本机或内网服务。"""
     parsed = urlparse((url or "").strip())
     if parsed.scheme not in {"http", "https"} or not parsed.hostname:
-        raise ImageInputError("invalid image url")
+        raise ImageInputError("图片 URL 不合法")
     # URL 中嵌入用户名密码通常不是正常图片地址，也容易造成凭据泄露。
     if parsed.username or parsed.password:
-        raise ImageInputError("invalid image url")
+        raise ImageInputError("图片 URL 不允许包含用户名或密码")
 
     # 域名可能解析成多个 IP，只要其中一个不是公网地址就拒绝。
     for address in _resolve_host(parsed.hostname):
@@ -95,25 +95,25 @@ async def load_image_from_url(url: str) -> Image.Image:
             try:
                 response = await client.get(current_url)
             except httpx.HTTPError as exc:
-                raise ImageDownloadError("failed to download image") from exc
+                raise ImageDownloadError("图片下载失败") from exc
             if response.status_code in {301, 302, 303, 307, 308}:
                 location = response.headers.get("location")
                 if not location:
-                    raise ImageDownloadError("invalid redirect")
+                    raise ImageDownloadError("图片 URL 重定向不合法")
                 # 不能让 httpx 自动跟随重定向，否则公网 URL 可能跳转到 127.0.0.1。
                 current_url = validate_public_image_url(str(response.url.join(location)))
                 continue
 
             if response.status_code >= 400:
-                raise ImageDownloadError(f"download failed with status {response.status_code}")
+                raise ImageDownloadError(f"图片下载失败，HTTP 状态码：{response.status_code}")
             content_type = response.headers.get("content-type", "").split(";", 1)[0].lower()
             if content_type and content_type not in ALLOWED_IMAGE_CONTENT_TYPES:
-                raise ImageInputError("invalid image content type")
+                raise ImageInputError("图片 Content-Type 不受支持")
             content = response.content
             if len(content) > get_settings().max_image_bytes:
-                raise ImageInputError("image too large")
+                raise ImageInputError("图片超过大小限制")
             return decode_image_bytes(content)
-    raise ImageDownloadError("too many redirects")
+    raise ImageDownloadError("图片 URL 重定向次数过多")
 
 
 async def load_request_image(image_base64: str | None, image_url: str | None) -> Image.Image:
@@ -122,7 +122,7 @@ async def load_request_image(image_base64: str | None, image_url: str | None) ->
         return decode_base64_image(image_base64)
     if image_url and image_url.strip():
         return await load_image_from_url(image_url)
-    raise ImageInputError("missing image source")
+    raise ImageInputError("缺少图片来源")
 
 
 def _resolve_host(hostname: str) -> Iterable[ipaddress._BaseAddress]:
@@ -133,7 +133,7 @@ def _resolve_host(hostname: str) -> Iterable[ipaddress._BaseAddress]:
             for item in socket.getaddrinfo(hostname, None, type=socket.SOCK_STREAM)
         ]
     except (socket.gaierror, ValueError) as exc:
-        raise ImageInputError("invalid image url host") from exc
+        raise ImageInputError("图片 URL 域名无法解析") from exc
 
 
 def _is_public_address(address: ipaddress._BaseAddress) -> bool:
