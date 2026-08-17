@@ -190,7 +190,7 @@ bash scripts/start-api.sh
 启动服务后访问：
 
 ```text
-http://服务器IP:8000/health
+http://服务器IP:8000/api/v1/health
 ```
 
 返回：
@@ -208,8 +208,8 @@ http://服务器IP:8000/docs
 确认可以看到：
 
 ```text
-/ocr/id-card
-/ocr/business-license
+/api/v1/ocr/id-card
+/api/v1/ocr/business-license
 ```
 
 ## 七、常见问题

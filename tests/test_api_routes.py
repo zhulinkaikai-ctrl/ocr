@@ -36,14 +36,14 @@ class ApiRoutesTests(unittest.TestCase):
         self.client = TestClient(app)
 
     def test_health(self):
-        response = self.client.get("/health")
+        response = self.client.get("/api/v1/health")
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["status"], "ok")
 
     def test_id_card_success_response(self):
         response = self.client.post(
-            "/ocr/id-card",
+            "/api/v1/ocr/id-card",
             json={"orderNo": "ORDER-1", "imageBase64": _sample_png_base64()},
         )
 
@@ -54,7 +54,7 @@ class ApiRoutesTests(unittest.TestCase):
         self.assertEqual(payload["data"]["info"]["name"], "张三")
 
     def test_parameter_error_response(self):
-        response = self.client.post("/ocr/id-card", json={"orderNo": "ORDER-2"})
+        response = self.client.post("/api/v1/ocr/id-card", json={"orderNo": "ORDER-2"})
 
         self.assertEqual(response.status_code, 200)
         payload = response.json()
@@ -68,7 +68,7 @@ class ApiRoutesTests(unittest.TestCase):
         with patch.dict("os.environ", {"API_TOKEN": "secret-token"}, clear=False):
             clear_settings_cache()
             response = self.client.post(
-                "/ocr/id-card",
+                "/api/v1/ocr/id-card",
                 json={"orderNo": "ORDER-1", "imageBase64": _sample_png_base64()},
             )
 
@@ -88,7 +88,7 @@ class ApiRoutesTests(unittest.TestCase):
         self.addCleanup(lambda: setattr(routes, "load_request_image", original))
 
         response = self.client.post(
-            "/ocr/id-card",
+            "/api/v1/ocr/id-card",
             json={"orderNo": "ORDER-3", "imageUrl": "https://example.com/a.png"},
         )
 
@@ -97,6 +97,13 @@ class ApiRoutesTests(unittest.TestCase):
         self.assertFalse(payload["success"])
         self.assertEqual(payload["code"], 1001)
         self.assertEqual(payload["msg"], "OCR识别异常")
+
+    def test_unversioned_routes_are_not_registered(self):
+        self.assertEqual(self.client.get("/health").status_code, 404)
+        self.assertEqual(
+            self.client.post("/ocr/id-card", json={"orderNo": "ORDER-OLD"}).status_code,
+            404,
+        )
 
 
 def _sample_png_base64() -> str:

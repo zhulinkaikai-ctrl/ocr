@@ -130,7 +130,7 @@ LOG_LEVEL=INFO
 验证服务：
 
 ```powershell
-curl http://127.0.0.1:8000/health
+curl http://127.0.0.1:8000/api/v1/health
 ```
 
 接口文档：
@@ -238,7 +238,7 @@ bash scripts/start-api.sh
 验证服务：
 
 ```bash
-curl http://127.0.0.1:8000/health
+curl http://127.0.0.1:8000/api/v1/health
 ```
 
 接口文档：
@@ -283,13 +283,13 @@ journalctl -u ocr-api -f
 身份证接口：
 
 ```text
-POST http://服务器IP:8000/ocr/id-card
+POST http://服务器IP:8000/api/v1/ocr/id-card
 ```
 
 营业执照接口：
 
 ```text
-POST http://服务器IP:8000/ocr/business-license
+POST http://服务器IP:8000/api/v1/ocr/business-license
 ```
 
 请求体示例：

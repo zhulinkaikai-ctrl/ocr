@@ -41,13 +41,13 @@ http://127.0.0.1:8000/docs
 健康检查：
 
 ```powershell
-curl http://127.0.0.1:8000/health
+curl http://127.0.0.1:8000/api/v1/health
 ```
 
 身份证正面识别：
 
 ```powershell
-curl -X POST http://127.0.0.1:8000/ocr/id-card `
+curl -X POST http://127.0.0.1:8000/api/v1/ocr/id-card `
   -H "Content-Type: application/json" `
   -d "{\"orderNo\":\"ORDER-1\",\"imageBase64\":\"...\"}"
 ```
@@ -55,7 +55,7 @@ curl -X POST http://127.0.0.1:8000/ocr/id-card `
 营业执照识别：
 
 ```powershell
-curl -X POST http://127.0.0.1:8000/ocr/business-license `
+curl -X POST http://127.0.0.1:8000/api/v1/ocr/business-license `
   -H "Content-Type: application/json" `
   -d "{\"orderNo\":\"ORDER-2\",\"imageUrl\":\"https://example.com/license.jpg\"}"
 ```
