@@ -20,6 +20,17 @@ class DemoDocumentResultTests(unittest.TestCase):
             ["名称上海市测试店", "统一社会信用代码91310000TEST"],
         )
 
+    def test_includes_optional_vl_debug_snapshot_for_local_demo(self):
+        lines = [
+            OCRLine("名称上海市测试店", 0.98),
+            OCRLine("统一社会信用代码91310000TEST", 0.97),
+        ]
+        debug_snapshot = [{"type": "FakeVLResult", "value": {"ok": True}}]
+
+        payload = app.build_demo_document_result("营业执照", lines, debug_snapshot=debug_snapshot)
+
+        self.assertEqual(payload["data"]["vl_debug"], debug_snapshot)
+
 
 if __name__ == "__main__":
     unittest.main()

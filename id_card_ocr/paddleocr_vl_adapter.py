@@ -25,12 +25,14 @@ class PaddleOCRVLAdapter:
         self.pipeline_version = pipeline_version
         self.enable_orientation = enable_orientation
         self._engine: Any | None = None
+        self.last_debug_snapshot: list[dict[str, Any]] = []
 
     def recognize(self, image: Any) -> list[OCRLine]:
         """识别图片，并把 VL 结果压平成业务提取器可消费的 OCRLine。"""
         engine = self._get_engine()
         prepared_image = _compress_image_if_configured(image, get_settings().ocr_compress_max_side)
         result = engine.predict(input=_to_numpy_image(prepared_image))
+        self.last_debug_snapshot = build_vl_debug_snapshot(result)
         return normalize_paddleocr_vl_result(result)
 
     def _get_engine(self) -> Any:
@@ -85,6 +87,31 @@ def normalize_paddleocr_vl_result(result: Any) -> list[OCRLine]:
         texts.extend(_extract_texts_from_vl_mapping(data))
 
     return [OCRLine(text=text, confidence=None) for text in _dedupe_texts(texts)]
+
+
+def build_vl_debug_snapshot(result: Any) -> list[dict[str, Any]]:
+    """把 PaddleOCR-VL 原始结果转成可直接展示给本地页面看的调试快照。"""
+    snapshot: list[dict[str, Any]] = []
+    for item in _as_list(result):
+        entry: dict[str, Any] = {"type": _type_name(item)}
+
+        mapping = _result_to_mapping(item)
+        if mapping:
+            entry["value"] = _safe_debug_value(mapping)
+
+        for attr in ["json", "to_json", "dict", "to_dict", "markdown"]:
+            if not hasattr(item, attr):
+                continue
+            raw_value = getattr(item, attr)
+            try:
+                raw_value = raw_value() if callable(raw_value) else raw_value
+            except TypeError:
+                continue
+            entry[attr] = _safe_debug_value(raw_value)
+
+        if len(entry) > 1:
+            snapshot.append(entry)
+    return snapshot
 
 
 def _compress_image_if_configured(image: Any, max_side: int | None) -> Any:
@@ -186,6 +213,75 @@ def _result_to_mapping(item: Any) -> dict[str, Any]:
         return {"markdown": getattr(item, "markdown")}
 
     return {}
+
+
+def _type_name(value: Any) -> str:
+    return value.__class__.__name__
+
+
+_DEBUG_MAX_DEPTH = 5
+_DEBUG_MAX_DICT_ITEMS = 30
+_DEBUG_MAX_SEQUENCE_ITEMS = 20
+_DEBUG_MAX_STRING_LENGTH = 500
+_DEBUG_SUMMARY_KEYS = {"input_img", "image", "images", "boxes", "polys", "imgs_in_doc"}
+
+
+def _safe_debug_value(value: Any, depth: int = 0) -> Any:
+    if isinstance(value, dict):
+        if depth >= _DEBUG_MAX_DEPTH:
+            return f"[dict len={len(value)}]"
+        result: dict[str, Any] = {}
+        items = list(value.items())
+        for index, (key, item) in enumerate(items):
+            if index >= _DEBUG_MAX_DICT_ITEMS:
+                result["..."] = f"[{len(items) - _DEBUG_MAX_DICT_ITEMS} more keys]"
+                break
+            key_name = str(key)
+            if key_name in _DEBUG_SUMMARY_KEYS:
+                result[key_name] = _summarize_large_value(item)
+            else:
+                result[key_name] = _safe_debug_value(item, depth + 1)
+        return result
+    if isinstance(value, list):
+        if depth >= _DEBUG_MAX_DEPTH or len(value) > _DEBUG_MAX_SEQUENCE_ITEMS:
+            return f"[list len={len(value)}]"
+        return [_safe_debug_value(item, depth + 1) for item in value]
+    if isinstance(value, tuple):
+        if depth >= _DEBUG_MAX_DEPTH or len(value) > _DEBUG_MAX_SEQUENCE_ITEMS:
+            return f"[tuple len={len(value)}]"
+        return [_safe_debug_value(item, depth + 1) for item in value]
+    if isinstance(value, str):
+        if len(value) <= _DEBUG_MAX_STRING_LENGTH:
+            return value
+        return value[:_DEBUG_MAX_STRING_LENGTH] + "..."
+    if value is None or isinstance(value, (bool, int, float)):
+        return value
+    if hasattr(value, "shape"):
+        shape = getattr(value, "shape", None)
+        if shape is not None:
+            return f"[{value.__class__.__name__} shape={_shape_to_text(shape)}]"
+    if hasattr(value, "tolist"):
+        try:
+            return _safe_debug_value(value.tolist(), depth + 1)
+        except Exception:
+            pass
+    return str(value)
+
+
+def _summarize_large_value(value: Any) -> Any:
+    if hasattr(value, "shape"):
+        return f"[{value.__class__.__name__} shape={_shape_to_text(getattr(value, 'shape', None))}]"
+    if isinstance(value, (list, tuple)):
+        return f"[{value.__class__.__name__} len={len(value)}]"
+    return _safe_debug_value(value, depth=_DEBUG_MAX_DEPTH)
+
+
+def _shape_to_text(shape: Any) -> str:
+    try:
+        parts = [str(int(part)) for part in shape]
+    except Exception:
+        return str(shape)
+    return "(" + ", ".join(parts) + ")"
 
 
 def _parse_mapping(value: Any) -> dict[str, Any]:

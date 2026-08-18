@@ -9,6 +9,7 @@ from PIL import Image
 
 from id_card_ocr.paddleocr_vl_adapter import (
     PaddleOCRVLAdapter,
+    build_vl_debug_snapshot,
     normalize_paddleocr_vl_result,
 )
 from id_card_ocr.paddle_adapter import PaddleOCRUnavailableError
@@ -66,6 +67,61 @@ class PaddleOCRVLAdapterTests(unittest.TestCase):
         lines = normalize_paddleocr_vl_result([FakeVLResult()])
 
         self.assertEqual([line.text for line in lines], ["姓名张三\n公民身份号码11010519491231002X"])
+
+    def test_builds_json_serializable_debug_snapshot(self):
+        class FakeVLResult:
+            markdown = {"text": "姓名张三"}
+
+            def to_json(self):
+                return json.dumps(
+                    {
+                        "res": {
+                            "json": {
+                                "parsing_res_list": [{"block_content": "姓名张三"}]
+                            }
+                        }
+                    },
+                    ensure_ascii=False,
+                )
+
+        snapshot = build_vl_debug_snapshot([FakeVLResult()])
+
+        json.dumps(snapshot, ensure_ascii=False)
+        self.assertEqual(snapshot[0]["type"], "FakeVLResult")
+        self.assertIn("to_json", snapshot[0])
+        self.assertEqual(snapshot[0]["markdown"], {"text": "姓名张三"})
+
+    def test_summarizes_large_arrays_in_debug_snapshot(self):
+        class FakeVLResult:
+            def to_json(self):
+                return {
+                    "res": {
+                        "json": {
+                            "input_img": [[[255, 255, 255]] * 50] * 50,
+                            "parsing_res_list": [{"block_content": "姓名张三"}],
+                        }
+                    }
+                }
+
+        snapshot = build_vl_debug_snapshot([FakeVLResult()])
+
+        self.assertIsInstance(snapshot[0]["value"]["res"]["json"]["input_img"], str)
+        self.assertIn("len=", snapshot[0]["value"]["res"]["json"]["input_img"])
+
+    def test_recognize_keeps_last_debug_snapshot(self):
+        class FakeEngine:
+            def predict(self, **kwargs):
+                return [{"res": {"json": {"parsing_res_list": [{"block_content": "姓名张三"}]}}}]
+
+        adapter = PaddleOCRVLAdapter()
+        adapter._engine = FakeEngine()
+
+        adapter.recognize(Image.new("RGB", (20, 20), "white"))
+
+        self.assertEqual(
+            adapter.last_debug_snapshot[0]["value"],
+            {"res": {"json": {"parsing_res_list": [{"block_content": "姓名张三"}]}}},
+        )
 
     def test_initializes_paddleocr_vl_pipeline_lazily(self):
         captured = {}

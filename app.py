@@ -99,11 +99,12 @@ def _render_document_panel(
 
 
 def _run_ocr(document_type: DocumentType, image: Image.Image) -> dict[str, Any] | None:
+    adapter = get_ocr_adapter()
     try:
         with st.spinner("正在识别"):
             # 这里拿到的是 OCR 原始文本行，还不是身份证/营业执照字段。
             # 字段结构化在 build_demo_document_result 里根据 document_type 分流。
-            lines = get_ocr_adapter().recognize(image)
+            lines = adapter.recognize(image)
     except PaddleOCRUnavailableError as exc:
         st.error(str(exc))
         return None
@@ -114,10 +115,18 @@ def _run_ocr(document_type: DocumentType, image: Image.Image) -> dict[str, Any] 
     if not lines:
         st.warning("没有识别到文字。")
 
-    return build_demo_document_result(document_type, lines)
+    return build_demo_document_result(
+        document_type,
+        lines,
+        debug_snapshot=getattr(adapter, "last_debug_snapshot", None),
+    )
 
 
-def build_demo_document_result(document_type: DocumentType, lines: list[OCRLine]) -> dict[str, Any]:
+def build_demo_document_result(
+    document_type: DocumentType,
+    lines: list[OCRLine],
+    debug_snapshot: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
     # 本地页面展示的 JSON 尽量复用 API 返回格式，方便你边上传调试边对照接口合同。
     # LOCAL-DEMO 只是页面调试用的订单号；正式 API 会用请求里的 orderNo 或自动生成。
     if document_type == "身份证":
@@ -126,11 +135,15 @@ def build_demo_document_result(document_type: DocumentType, lines: list[OCRLine]
         # API 返回里默认不带调试细节；页面为了方便排查，多附加原始文本和内部字段明细。
         payload["data"]["raw_texts"] = result.raw_texts
         payload["data"]["detail"] = result.to_json_dict()
+        if debug_snapshot is not None:
+            payload["data"]["vl_debug"] = debug_snapshot
         return payload
 
     content = extract_business_license(lines)
     payload = build_business_license_success("LOCAL-DEMO", content)
     payload["data"]["raw_texts"] = [line.text for line in lines]
+    if debug_snapshot is not None:
+        payload["data"]["vl_debug"] = debug_snapshot
     return payload
 
 
@@ -151,6 +164,11 @@ def _render_result(document_type: DocumentType, payload: dict[str, Any]) -> None
             st.write("\n".join(raw_texts))
         else:
             st.write("无")
+
+    vl_debug = payload.get("data", {}).get("vl_debug", [])
+    if vl_debug:
+        with st.expander("PaddleOCR-VL 原始结果"):
+            st.json(vl_debug)
 
 
 def _render_id_card_summary(payload: dict[str, Any]) -> None:
