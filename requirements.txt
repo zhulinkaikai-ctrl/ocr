@@ -1,2 +1,13 @@
+# PaddlePaddle GPU/CPU package should match your machine.
+# If your environment is already installed, do not reinstall it here.
+# Example GPU install:
+#   python -m pip install paddlepaddle-gpu
+
 streamlit>=1.36.0
 requests>=2.31.0
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+pillow>=10.0.0
+numpy>=1.24.0
+paddleocr>=3.7.0
+paddlex[ocr]>=3.7.2

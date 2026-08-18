@@ -10,11 +10,11 @@ from ocr_settings import get_settings
 
 
 class OCRClientError(RuntimeError):
-    """本地 Docker OCR 服务调用失败。"""
+    """OCR 服务调用失败。"""
 
 
 class OCRClient:
-    """调用本机 Docker Compose 启动的 PaddleOCR-VL 服务。"""
+    """调用官方兼容的 PaddleOCR-VL HTTP 服务。"""
 
     def __init__(
         self,

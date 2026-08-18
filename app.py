@@ -18,7 +18,7 @@ DOCUMENT_TYPES = ["身份证", "营业执照", "发票"]
 
 @st.cache_resource(show_spinner=False)
 def get_ocr_client() -> OCRClient:
-    """复用本地 Docker OCR 服务的 HTTP 客户端。"""
+    """复用官方兼容 OCR 服务的 HTTP 客户端。"""
     return OCRClient()
 
 
@@ -54,7 +54,7 @@ def main() -> None:
         st.subheader(f"{document_type}识别结果")
         if st.button("开始识别", type="primary", width="stretch"):
             try:
-                with st.spinner("正在调用本机 PaddleOCR-VL 服务"):
+                with st.spinner("正在调用 PaddleOCR-VL 服务"):
                     result = _run_ocr(
                         get_ocr_client(),
                         uploaded_file.name,
