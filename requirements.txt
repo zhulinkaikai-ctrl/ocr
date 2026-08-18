@@ -1,9 +1,2 @@
-# Install paddlepaddle or paddlepaddle-gpu separately for your CPU/GPU environment; see README.md.
-paddleocr>=3.7.0
-paddlex[ocr]>=3.7.2
 streamlit>=1.36.0
-pillow>=10.0.0
-numpy>=1.24.0
-fastapi>=0.115.0
-uvicorn>=0.30.0
-httpx>=0.27.0
+requests>=2.31.0
