@@ -1,203 +1,128 @@
-import json
-import os
-import sys
-import types
 import unittest
 from unittest.mock import patch
 
 from PIL import Image
 
-from id_card_ocr.paddleocr_vl_adapter import (
-    PaddleOCRVLAdapter,
-    build_vl_debug_snapshot,
-    normalize_paddleocr_vl_result,
-)
-from id_card_ocr.paddle_adapter import PaddleOCRUnavailableError
-from ocr_api.settings import clear_settings_cache
+from id_card_ocr.paddleocr_vl_adapter import PaddleOCRVLAdapter
 
 
 class PaddleOCRVLAdapterTests(unittest.TestCase):
-    def setUp(self):
-        clear_settings_cache()
-        self.addCleanup(clear_settings_cache)
-
-    def test_normalizes_json_string_result(self):
-        class FakeVLResult:
-            def to_json(self):
-                return json.dumps(
-                    {
-                        "res": {
-                            "json": {
-                                "parsing_res_list": [
-                                    {"block_content": "姓名张三"},
-                                    {"block_content": "公民身份号码11010519491231002X"},
-                                ]
-                            }
-                        }
-                    },
-                    ensure_ascii=False,
-                )
-
-        lines = normalize_paddleocr_vl_result([FakeVLResult()])
-
-        self.assertEqual([line.text for line in lines], ["姓名张三", "公民身份号码11010519491231002X"])
-
-    def test_normalizes_service_style_layout_parsing_result(self):
-        result = {
-            "layoutParsingResults": [
-                {
-                    "prunedResult": {
-                        "parsing_res_list": [
-                            {"block_content": "姓名张三"},
-                            {"block_content": "公民身份号码11010519491231002X"},
-                        ]
-                    }
-                }
-            ]
-        }
-
-        lines = normalize_paddleocr_vl_result([result])
-
-        self.assertEqual([line.text for line in lines], ["姓名张三", "公民身份号码11010519491231002X"])
-
-    def test_normalizes_markdown_attribute_when_json_is_unavailable(self):
-        class FakeVLResult:
-            markdown = {"text": "姓名张三\n公民身份号码11010519491231002X"}
-
-        lines = normalize_paddleocr_vl_result([FakeVLResult()])
-
-        self.assertEqual([line.text for line in lines], ["姓名张三\n公民身份号码11010519491231002X"])
-
-    def test_builds_json_serializable_debug_snapshot(self):
-        class FakeVLResult:
-            markdown = {"text": "姓名张三"}
+    def test_recognize_returns_clean_json_for_single_result(self):
+        class FakeResult:
+            json = {"res": {"parsing_res_list": [{"block_content": "姓名张三"}]}}
 
             def to_json(self):
-                return json.dumps(
-                    {
-                        "res": {
-                            "json": {
-                                "parsing_res_list": [{"block_content": "姓名张三"}]
-                            }
-                        }
-                    },
-                    ensure_ascii=False,
-                )
+                return {"input_img": "should-not-be-used"}
 
-        snapshot = build_vl_debug_snapshot([FakeVLResult()])
-
-        json.dumps(snapshot, ensure_ascii=False)
-        self.assertEqual(snapshot[0]["type"], "FakeVLResult")
-        self.assertIn("to_json", snapshot[0])
-        self.assertEqual(snapshot[0]["markdown"], {"text": "姓名张三"})
-
-    def test_summarizes_large_arrays_in_debug_snapshot(self):
-        class FakeVLResult:
-            def to_json(self):
-                return {
-                    "res": {
-                        "json": {
-                            "input_img": [[[255, 255, 255]] * 50] * 50,
-                            "parsing_res_list": [{"block_content": "姓名张三"}],
-                        }
-                    }
-                }
-
-        snapshot = build_vl_debug_snapshot([FakeVLResult()])
-
-        self.assertIsInstance(snapshot[0]["value"]["res"]["json"]["input_img"], str)
-        self.assertIn("len=", snapshot[0]["value"]["res"]["json"]["input_img"])
-
-    def test_recognize_keeps_last_debug_snapshot(self):
         class FakeEngine:
             def predict(self, **kwargs):
-                return [{"res": {"json": {"parsing_res_list": [{"block_content": "姓名张三"}]}}}]
+                return [FakeResult()]
 
         adapter = PaddleOCRVLAdapter()
         adapter._engine = FakeEngine()
 
-        adapter.recognize(Image.new("RGB", (20, 20), "white"))
+        result = adapter.recognize(Image.new("RGB", (16, 16), "white"))
+
+        self.assertEqual(result, FakeResult.json)
+
+    def test_recognize_prefers_json_property_on_dict_like_result(self):
+        class FakeResult(dict):
+            json = {"res": {"parsing_res_list": [{"block_content": "统一社会信用代码"}]}}
+
+        class FakeEngine:
+            def predict(self, **kwargs):
+                return [FakeResult({"input_img": "should-not-be-used"})]
+
+        adapter = PaddleOCRVLAdapter()
+        adapter._engine = FakeEngine()
+
+        result = adapter.recognize(Image.new("RGB", (16, 16), "white"))
+
+        self.assertEqual(result, FakeResult.json)
+        self.assertIs(type(result), dict)
+
+    def test_recognize_returns_json_array_for_multiple_pages(self):
+        class FakeResult:
+            def __init__(self, page_index):
+                self.json = {"res": {"page_index": page_index}}
+
+        class FakeEngine:
+            def predict(self, **kwargs):
+                return [FakeResult(0), FakeResult(1)]
+
+        adapter = PaddleOCRVLAdapter()
+        adapter._engine = FakeEngine()
+
+        result = adapter.recognize(Image.new("RGB", (16, 16), "white"))
 
         self.assertEqual(
-            adapter.last_debug_snapshot[0]["value"],
-            {"res": {"json": {"parsing_res_list": [{"block_content": "姓名张三"}]}}},
+            result,
+            [{"res": {"page_index": 0}}, {"res": {"page_index": 1}}],
         )
 
-    def test_initializes_paddleocr_vl_pipeline_lazily(self):
-        captured = {}
-
-        class FakePaddleOCRVL:
-            def __init__(self, **kwargs):
-                captured.update(kwargs)
-
-            def predict(self, input):
-                return []
-
-        fake_module = types.SimpleNamespace(PaddleOCRVL=FakePaddleOCRVL)
-
-        with patch.dict(sys.modules, {"paddleocr": fake_module}):
-            with patch.dict(os.environ, {}, clear=False):
-                with patch("id_card_ocr.paddleocr_vl_adapter.select_paddle_device", return_value="gpu:0"):
-                    adapter = PaddleOCRVLAdapter(enable_orientation=False)
-                    adapter._get_engine()
-
-        self.assertEqual(captured["pipeline_version"], "v1.6")
-        self.assertEqual(captured["device"], "gpu:0")
-        self.assertFalse(captured["use_doc_orientation_classify"])
-        self.assertTrue(captured["use_layout_detection"])
-        self.assertFalse(captured["use_queues"])
-
-    def test_dependency_error_keeps_paddlex_extra_hint(self):
-        class FakePaddleOCRVL:
-            def __init__(self, **kwargs):
-                dependency_error = RuntimeError(
-                    '`PaddleOCR-VL-1.6` requires additional dependencies. '
-                    'To install them, run `pip install "paddlex[ocr]==3.7.2"`.'
-                )
-                raise RuntimeError("A dependency error occurred during pipeline creation.") from dependency_error
-
-        fake_module = types.SimpleNamespace(PaddleOCRVL=FakePaddleOCRVL)
-
-        with patch.dict(sys.modules, {"paddleocr": fake_module}):
-            with self.assertRaises(PaddleOCRUnavailableError) as context:
-                PaddleOCRVLAdapter()._get_engine()
-
-        self.assertIn("paddlex[ocr]", str(context.exception))
-
-    def test_compresses_image_only_when_local_env_sets_max_side(self):
-        captured = {}
-
+    def test_recognize_applies_configured_local_image_compression(self):
         class FakeEngine:
-            def predict(self, **kwargs):
-                captured.update(kwargs)
-                return []
+            def __init__(self):
+                self.input_shape = None
 
-        with patch.dict(os.environ, {"OCR_COMPRESS_MAX_SIDE": "640"}, clear=False):
-            clear_settings_cache()
-            adapter = PaddleOCRVLAdapter()
-            adapter._engine = FakeEngine()
+            def predict(self, *, input):
+                self.input_shape = input.shape
+                return [{"res": {"parsing_res_list": []}}]
 
-            adapter.recognize(Image.new("RGB", (2000, 1000), "white"))
-
-        height, width = captured["input"].shape[:2]
-        self.assertEqual(max(width, height), 640)
-
-    def test_keeps_original_image_when_compression_is_not_configured(self):
-        captured = {}
-
-        class FakeEngine:
-            def predict(self, **kwargs):
-                captured.update(kwargs)
-                return []
-
-        clear_settings_cache()
+        engine = FakeEngine()
         adapter = PaddleOCRVLAdapter()
-        adapter._engine = FakeEngine()
+        adapter._engine = engine
 
-        adapter.recognize(Image.new("RGB", (2000, 1000), "white"))
+        with patch(
+            "id_card_ocr.paddleocr_vl_adapter.get_settings",
+            return_value=type("Settings", (), {"ocr_compress_max_side": 640})(),
+        ):
+            result = adapter.recognize(Image.new("RGB", (1600, 800), "white"))
 
-        height, width = captured["input"].shape[:2]
-        self.assertEqual((width, height), (2000, 1000))
+        self.assertEqual(result, {"res": {"parsing_res_list": []}})
+        self.assertLessEqual(max(engine.input_shape[:2]), 640)
+
+    def test_recognize_keeps_original_image_without_compression(self):
+        class FakeEngine:
+            def __init__(self):
+                self.input_shape = None
+
+            def predict(self, *, input):
+                self.input_shape = input.shape
+                return [{"res": {"parsing_res_list": []}}]
+
+        engine = FakeEngine()
+        adapter = PaddleOCRVLAdapter()
+        adapter._engine = engine
+
+        with patch(
+            "id_card_ocr.paddleocr_vl_adapter.get_settings",
+            return_value=type("Settings", (), {"ocr_compress_max_side": None})(),
+        ):
+            adapter.recognize(Image.new("RGB", (1600, 800), "white"))
+
+        self.assertEqual(engine.input_shape[:2], (800, 1600))
+
+    def test_initializes_v16_pipeline_on_selected_gpu_without_queues(self):
+        class FakePaddleOCRVL:
+            def __init__(self, **kwargs):
+                self.kwargs = kwargs
+
+        adapter = PaddleOCRVLAdapter(pipeline_version="v1.6", enable_orientation=True)
+
+        with patch("id_card_ocr.paddleocr_vl_adapter._configure_paddle_runtime"), patch(
+            "id_card_ocr.paddleocr_vl_adapter.select_paddle_device",
+            return_value="gpu:0",
+        ), patch.dict(
+            "sys.modules",
+            {"paddleocr": type("Module", (), {"PaddleOCRVL": FakePaddleOCRVL})()},
+        ):
+            engine = adapter._get_engine()
+
+        self.assertEqual(engine.kwargs["pipeline_version"], "v1.6")
+        self.assertEqual(engine.kwargs["device"], "gpu:0")
+        self.assertTrue(engine.kwargs["use_doc_orientation_classify"])
+        self.assertFalse(engine.kwargs["use_queues"])
 
 
 if __name__ == "__main__":

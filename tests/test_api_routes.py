@@ -21,15 +21,12 @@ class ApiRoutesTests(unittest.TestCase):
 
         class FakeAdapter:
             def recognize(self, image):
-                from id_card_ocr.models import OCRLine
-
-                return [
-                    OCRLine("姓名张三", 0.99),
-                    OCRLine("性别男民族汉", 0.98),
-                    OCRLine("出生1981年8月16日", 0.97),
-                    OCRLine("住址浙江省杭州市", 0.96),
-                    OCRLine("公民身份号码11010519491231002X", 0.95),
-                ]
+                return {
+                    "res": {
+                        "page_index": None,
+                        "parsing_res_list": [{"block_content": "姓名张三"}],
+                    }
+                }
 
         app.dependency_overrides[get_ocr_adapter] = lambda: FakeAdapter()
         self.addCleanup(app.dependency_overrides.clear)
@@ -41,20 +38,42 @@ class ApiRoutesTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["status"], 200)
 
-    def test_id_card_success_response(self):
+    def test_id_card_returns_paddleocr_vl_raw_json(self):
         response = self.client.post(
             "/api/v1/ocr/id-card",
             json={"orderNo": "ORDER-1", "imageBase64": _sample_png_base64()},
         )
 
         self.assertEqual(response.status_code, 200)
-        payload = response.json()
-        self.assertTrue(payload["success"])
-        self.assertEqual(payload["data"]["side"], "front")
-        self.assertEqual(payload["data"]["info"]["name"], "张三")
+        self.assertEqual(
+            response.json(),
+            {
+                "res": {
+                    "page_index": None,
+                    "parsing_res_list": [{"block_content": "姓名张三"}],
+                }
+            },
+        )
+
+    def test_business_license_returns_paddleocr_vl_raw_json(self):
+        response = self.client.post(
+            "/api/v1/ocr/business-license",
+            json={"orderNo": "ORDER-2", "imageBase64": _sample_png_base64()},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.json(),
+            {
+                "res": {
+                    "page_index": None,
+                    "parsing_res_list": [{"block_content": "姓名张三"}],
+                }
+            },
+        )
 
     def test_parameter_error_response(self):
-        response = self.client.post("/api/v1/ocr/id-card", json={"orderNo": "ORDER-2"})
+        response = self.client.post("/api/v1/ocr/id-card", json={"orderNo": "ORDER-3"})
 
         self.assertEqual(response.status_code, 200)
         payload = response.json()
@@ -73,7 +92,10 @@ class ApiRoutesTests(unittest.TestCase):
             )
 
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(response.json()["success"])
+        self.assertEqual(
+            response.json()["res"]["parsing_res_list"][0]["block_content"],
+            "姓名张三",
+        )
 
     def test_download_error_response(self):
         import ocr_api.routes as routes

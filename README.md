@@ -1,6 +1,6 @@
 # OCR 本地 Demo
 
-本项目是一个本地运行的 Streamlit Demo，用 PaddleOCR-VL-1.6 识别居民身份证和营业执照图片，并输出结构化字段。
+本项目提供 PaddleOCR-VL-1.6 的本地调试页面和 FastAPI 服务，用于识别居民身份证和营业执照图片，并直接返回模型原始 JSON。业务字段提取和最终响应封装由 Java 调用方负责。
 
 ## 安装
 
@@ -26,7 +26,7 @@ streamlit run app.py
 .\scripts\start-demo.ps1 -EnvFile .env.local
 ```
 
-浏览器打开 Streamlit 给出的本地地址，在“身份证”或“营业执照”标签页上传图片后点击识别按钮。
+浏览器打开 Streamlit 给出的本地地址，上传身份证或营业执照图片后点击识别按钮。
 
 第一次运行时，PaddleOCR-VL-1.6 的模型缓存会放在项目目录下的 `.paddlex_cache/`。
 
@@ -75,33 +75,22 @@ curl -X POST http://127.0.0.1:8000/api/v1/ocr/business-license `
 
 ## 输出
 
-页面会展示：
-
-- 图片预览
-- 证件面判断
-- 字段表格
-- 字段校验状态
-- 可复制 JSON
-- 原始 OCR 文本
-
-JSON 采用中英结合结构：
+成功时页面和 API 都直接展示 PaddleOCR-VL 原始 JSON，例如：
 
 ```json
 {
-  "证件类型": "居民身份证",
-  "证件面": "正面",
-  "字段": [
-    {
-      "key": "name",
-      "label": "姓名",
-      "value": "张三",
-      "status": "通过",
-      "confidence": 0.98
-    }
-  ],
-  "原始文本": ["姓名张三"]
+  "res": {
+    "input_path": null,
+    "page_index": null,
+    "page_count": null,
+    "parsing_res_list": []
+  }
 }
 ```
+
+Python 服务不解析身份证或营业执照字段，也不返回 `info`、`content` 等业务结构。Java 可以根据 `res.parsing_res_list` 及其他模型字段自行提取并封装。
+
+参数错误和 OCR 异常仍返回统一失败结构，详见 `docs/requirements/2026-08-13-ocr-api.md`。
 
 ## 隐私
 

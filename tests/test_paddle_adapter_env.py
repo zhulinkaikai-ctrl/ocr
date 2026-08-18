@@ -5,7 +5,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from id_card_ocr.paddle_adapter import PaddleOCRAdapter, select_paddle_device
+from id_card_ocr.paddle_adapter import select_paddle_device
+from id_card_ocr.paddleocr_vl_adapter import PaddleOCRVLAdapter
 from ocr_api.settings import clear_settings_cache
 
 
@@ -17,7 +18,7 @@ class PaddleAdapterEnvTests(unittest.TestCase):
     def test_sets_runtime_env_before_importing_paddleocr(self):
         captured = {}
 
-        class FakePaddleOCR:
+        class FakePaddleOCRVL:
             def __init__(self, **kwargs):
                 captured["kwargs"] = kwargs
                 captured["pir"] = os.environ.get("FLAGS_enable_pir_api")
@@ -25,10 +26,7 @@ class PaddleAdapterEnvTests(unittest.TestCase):
                 captured["mkldnn"] = os.environ.get("FLAGS_use_mkldnn")
                 captured["cache_home"] = os.environ.get("PADDLE_PDX_CACHE_HOME")
 
-            def predict(self, image):
-                return []
-
-        fake_module = types.SimpleNamespace(PaddleOCR=FakePaddleOCR)
+        fake_module = types.SimpleNamespace(PaddleOCRVL=FakePaddleOCRVL)
 
         with patch.dict(sys.modules, {"paddleocr": fake_module}):
             with patch.dict(
@@ -40,30 +38,15 @@ class PaddleAdapterEnvTests(unittest.TestCase):
                 },
                 clear=False,
             ):
-                adapter = PaddleOCRAdapter(enable_orientation=False)
+                adapter = PaddleOCRVLAdapter(enable_orientation=False)
                 adapter._get_engine()
 
         self.assertEqual(captured["pir"], "0")
         self.assertEqual(captured["onednn"], "0")
         self.assertEqual(captured["mkldnn"], "0")
         self.assertEqual(Path(captured["cache_home"]).name, ".paddlex_cache")
-        self.assertIn("enable_mkldnn", captured["kwargs"])
-        self.assertFalse(captured["kwargs"]["enable_mkldnn"])
-
-    def test_does_not_fall_back_to_ocr_when_predict_returns_empty(self):
-        class FakeEngine:
-            def predict(self, image):
-                return []
-
-            def ocr(self, *args, **kwargs):
-                raise AssertionError("ocr should not be called when predict already ran")
-
-        adapter = PaddleOCRAdapter(enable_orientation=False)
-        adapter._engine = FakeEngine()
-
-        result = adapter.recognize(object())
-
-        self.assertEqual(result, [])
+        self.assertEqual(captured["kwargs"]["pipeline_version"], "v1.6")
+        self.assertFalse(captured["kwargs"]["use_queues"])
 
     def test_selects_gpu_when_paddle_has_cuda(self):
         fake_paddle = types.SimpleNamespace(is_compiled_with_cuda=MagicMock(return_value=True))
