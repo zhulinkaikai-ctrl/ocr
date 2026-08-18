@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 from PIL import Image
 
+from id_card_ocr.paddle_adapter import PaddleOCRUnavailableError
 from id_card_ocr.paddleocr_vl_adapter import PaddleOCRVLAdapter
 
 
@@ -40,6 +41,66 @@ class PaddleOCRVLAdapterTests(unittest.TestCase):
 
         self.assertEqual(result, FakeResult.json)
         self.assertIs(type(result), dict)
+
+    def test_recognize_falls_back_when_official_json_export_fails(self):
+        class BrokenJsonResult(dict):
+            @property
+            def json(self):
+                raise RuntimeError("int(Tensor) is not supported in static graph mode")
+
+        class FakeBlock:
+            label = "text"
+            content = "统一社会信用代码 91310000TEST"
+            bbox = [10, 20, 300, 80]
+            group_id = None
+            global_block_id = None
+            global_group_id = None
+            polygon_points = None
+
+        class FakeEngine:
+            def predict(self, **kwargs):
+                return [
+                    BrokenJsonResult(
+                        {
+                            "input_path": None,
+                            "page_index": None,
+                            "page_count": None,
+                            "width": 640,
+                            "height": 480,
+                            "model_settings": {
+                                "use_doc_preprocessor": False,
+                                "use_layout_detection": False,
+                            },
+                            "parsing_res_list": [FakeBlock()],
+                            "doc_preprocessor_res": None,
+                            "layout_det_res": None,
+                        }
+                    )
+                ]
+
+        adapter = PaddleOCRVLAdapter()
+        adapter._engine = FakeEngine()
+
+        result = adapter.recognize(Image.new("RGB", (16, 16), "white"))
+
+        self.assertEqual(result["res"]["width"], 640)
+        self.assertEqual(
+            result["res"]["parsing_res_list"][0]["block_content"],
+            "统一社会信用代码 91310000TEST",
+        )
+
+    def test_recognize_reports_predict_failure_stage(self):
+        class FakeEngine:
+            def predict(self, **kwargs):
+                raise RuntimeError("int(Tensor) is not supported in static graph mode")
+
+        adapter = PaddleOCRVLAdapter()
+        adapter._engine = FakeEngine()
+
+        with self.assertRaises(PaddleOCRUnavailableError) as raised:
+            adapter.recognize(Image.new("RGB", (16, 16), "white"))
+
+        self.assertIn("PaddleOCR-VL 推理失败", str(raised.exception))
 
     def test_recognize_returns_json_array_for_multiple_pages(self):
         class FakeResult:

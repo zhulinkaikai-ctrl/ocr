@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from id_card_ocr.paddle_adapter import select_paddle_device
+from id_card_ocr.paddle_adapter import _configure_paddle_runtime, select_paddle_device
 from id_card_ocr.paddleocr_vl_adapter import PaddleOCRVLAdapter
 from ocr_api.settings import clear_settings_cache
 
@@ -47,6 +47,17 @@ class PaddleAdapterEnvTests(unittest.TestCase):
         self.assertEqual(Path(captured["cache_home"]).name, ".paddlex_cache")
         self.assertEqual(captured["kwargs"]["pipeline_version"], "v1.6")
         self.assertFalse(captured["kwargs"]["use_queues"])
+
+    def test_configure_runtime_forces_dynamic_graph_mode(self):
+        fake_paddle = types.SimpleNamespace(
+            in_dynamic_mode=MagicMock(return_value=False),
+            disable_static=MagicMock(),
+        )
+
+        with patch.dict(sys.modules, {"paddle": fake_paddle}):
+            _configure_paddle_runtime()
+
+        fake_paddle.disable_static.assert_called_once()
 
     def test_selects_gpu_when_paddle_has_cuda(self):
         fake_paddle = types.SimpleNamespace(is_compiled_with_cuda=MagicMock(return_value=True))

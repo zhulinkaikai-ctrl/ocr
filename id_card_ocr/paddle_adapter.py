@@ -18,6 +18,21 @@ def _configure_paddle_runtime() -> None:
     os.environ["FLAGS_enable_pir_api"] = "0"
     os.environ["FLAGS_use_onednn"] = "0"
     os.environ["FLAGS_use_mkldnn"] = "0"
+    ensure_paddle_dynamic_mode()
+
+
+def ensure_paddle_dynamic_mode() -> None:
+    """如果进程被其他代码切到静态图模式，识别前拉回 Paddle 动态图模式。"""
+    try:
+        import paddle
+    except Exception:
+        return
+
+    try:
+        if not paddle.in_dynamic_mode():
+            paddle.disable_static()
+    except Exception:
+        return
 
 
 def select_paddle_device(paddle_module: Any | None = None) -> str:
