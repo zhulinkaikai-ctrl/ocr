@@ -60,7 +60,7 @@ LOG_LEVEL=INFO
 - `OCR_DEVICE`：OCR 运行设备。GPU 服务器填 `gpu:0`；留空则自动判断。
 - `OCR_ENGINE`：当前分支固定使用 `paddleocr_vl`，也就是 PaddleOCR-VL-1.6。
 - `MODEL_CACHE_DIR`：PaddleOCR-VL 模型缓存目录，生产环境可以改成绝对路径。
-- `OCR_COMPRESS_MAX_SIDE`：本地测试图片压缩开关。正式环境留空；本地 4GB 显存机器可填 `1280`。
+- `OCR_COMPRESS_MAX_SIDE`：本地测试图片压缩开关。正式环境留空；本地 4GB 显存机器建议先填 `640`，跑通后再尝试调高。
 - `MAX_IMAGE_BYTES`：单张图片最大字节数，默认 10MB。
 - `LOG_LEVEL`：日志级别，生产环境建议 `INFO`。
 
@@ -118,7 +118,7 @@ CPU 示例：
 OCR_DEVICE=
 OCR_ENGINE=paddleocr_vl
 MODEL_CACHE_DIR=D:\services\tesrtOCR\.paddlex_cache
-OCR_COMPRESS_MAX_SIDE=1280
+OCR_COMPRESS_MAX_SIDE=640
 MAX_IMAGE_BYTES=10485760
 LOG_LEVEL=INFO
 ```
@@ -232,7 +232,7 @@ CPU 示例：
 OCR_DEVICE=
 OCR_ENGINE=paddleocr_vl
 MODEL_CACHE_DIR=/opt/tesrtOCR/.paddlex_cache
-OCR_COMPRESS_MAX_SIDE=1280
+OCR_COMPRESS_MAX_SIDE=640
 MAX_IMAGE_BYTES=10485760
 LOG_LEVEL=INFO
 ```

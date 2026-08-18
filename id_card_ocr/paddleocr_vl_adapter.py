@@ -57,6 +57,7 @@ class PaddleOCRVLAdapter:
                 use_chart_recognition=False,
                 use_seal_recognition=True,
                 use_ocr_for_image_block=True,
+                use_queues=False,
             )
         except Exception as exc:
             raise PaddleOCRUnavailableError(
@@ -119,18 +120,37 @@ def _extract_texts_from_vl_mapping(data: dict[str, Any]) -> list[str]:
 def _extract_json_texts(value: Any) -> list[str]:
     texts: list[str] = []
     if isinstance(value, dict):
-        for key in ["block_content", "text", "content"]:
+        for key in ["block_content", "text", "content", "ocr_text", "rec_text"]:
             text = value.get(key)
             if isinstance(text, str):
                 texts.append(text)
-        for key in ["parsing_res_list", "rec_texts", "texts", "pages"]:
+        for key in [
+            "parsing_res_list",
+            "rec_texts",
+            "texts",
+            "pages",
+            "layoutParsingResults",
+            "prunedResult",
+            "markdown",
+            "markdown_texts",
+        ]:
             texts.extend(_extract_json_texts(value.get(key)))
         return texts
-    if isinstance(value, list):
+    if isinstance(value, (list, tuple)):
         for item in value:
             texts.extend(_extract_json_texts(item))
         return texts
     if isinstance(value, str):
+        # 某些结果对象会把嵌套 JSON 作为字符串返回，先尝试还原结构，
+        # 普通 OCR 文本解析失败后仍按原文保留。
+        stripped = value.strip()
+        if stripped.startswith(("{", "[")):
+            try:
+                parsed = json.loads(stripped)
+            except json.JSONDecodeError:
+                parsed = None
+            if parsed is not None:
+                return _extract_json_texts(parsed)
         texts.append(value)
     return texts
 
@@ -160,6 +180,10 @@ def _result_to_mapping(item: Any) -> dict[str, Any]:
         mapping = _parse_mapping(value)
         if mapping:
             return mapping
+
+    # PaddleOCR-VL 某些版本只暴露 markdown 属性，json 属性可能为空或不存在。
+    if hasattr(item, "markdown"):
+        return {"markdown": getattr(item, "markdown")}
 
     return {}
 

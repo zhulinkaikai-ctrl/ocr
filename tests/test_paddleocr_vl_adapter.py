@@ -41,6 +41,32 @@ class PaddleOCRVLAdapterTests(unittest.TestCase):
 
         self.assertEqual([line.text for line in lines], ["姓名张三", "公民身份号码11010519491231002X"])
 
+    def test_normalizes_service_style_layout_parsing_result(self):
+        result = {
+            "layoutParsingResults": [
+                {
+                    "prunedResult": {
+                        "parsing_res_list": [
+                            {"block_content": "姓名张三"},
+                            {"block_content": "公民身份号码11010519491231002X"},
+                        ]
+                    }
+                }
+            ]
+        }
+
+        lines = normalize_paddleocr_vl_result([result])
+
+        self.assertEqual([line.text for line in lines], ["姓名张三", "公民身份号码11010519491231002X"])
+
+    def test_normalizes_markdown_attribute_when_json_is_unavailable(self):
+        class FakeVLResult:
+            markdown = {"text": "姓名张三\n公民身份号码11010519491231002X"}
+
+        lines = normalize_paddleocr_vl_result([FakeVLResult()])
+
+        self.assertEqual([line.text for line in lines], ["姓名张三\n公民身份号码11010519491231002X"])
+
     def test_initializes_paddleocr_vl_pipeline_lazily(self):
         captured = {}
 
@@ -63,6 +89,7 @@ class PaddleOCRVLAdapterTests(unittest.TestCase):
         self.assertEqual(captured["device"], "gpu:0")
         self.assertFalse(captured["use_doc_orientation_classify"])
         self.assertTrue(captured["use_layout_detection"])
+        self.assertFalse(captured["use_queues"])
 
     def test_dependency_error_keeps_paddlex_extra_hint(self):
         class FakePaddleOCRVL:
