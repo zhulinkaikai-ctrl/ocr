@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
+from functools import lru_cache
 from typing import Annotated
 from uuid import uuid4
 
@@ -17,8 +18,9 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+@lru_cache(maxsize=1)
 def get_ocr_adapter() -> PPStructureV3Adapter:
-    """Create the OCR adapter; tests override this FastAPI dependency."""
+    """Return the process-wide OCR adapter; tests override this FastAPI dependency."""
     return PPStructureV3Adapter(lang="ch", enable_orientation=True)
 
 

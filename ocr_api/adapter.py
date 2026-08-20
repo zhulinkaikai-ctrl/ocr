@@ -48,9 +48,9 @@ class PPStructureV3Adapter:
                 use_doc_unwarping=False,
                 use_textline_orientation=self.enable_orientation,
                 use_table_recognition=True,
-                use_formula_recognition=True,
-                use_chart_recognition=True,
-                use_seal_recognition=True,
+                use_formula_recognition=False,
+                use_chart_recognition=False,
+                use_seal_recognition=False,
                 use_region_detection=True,
             )
         except Exception as exc:

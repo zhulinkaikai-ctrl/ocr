@@ -85,6 +85,11 @@ class StructureRouteTests(unittest.TestCase):
         self.assertEqual(response.json()["code"], 400)
         self.assertFalse(response.json()["success"])
 
+    def test_adapter_dependency_reuses_single_instance(self):
+        from ocr_api.routes import get_ocr_adapter
+
+        self.assertIs(get_ocr_adapter(), get_ocr_adapter())
+
     def test_unversioned_routes_are_not_registered(self):
         self.assertEqual(self.client.get("/health").status_code, 404)
         self.assertEqual(self.client.post("/ocr/structure", json={}).status_code, 404)

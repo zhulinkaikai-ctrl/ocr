@@ -59,6 +59,9 @@ class StructureAdapterTests(unittest.TestCase):
         self.assertTrue(captured["kwargs"]["use_doc_orientation_classify"])
         self.assertTrue(captured["kwargs"]["use_textline_orientation"])
         self.assertTrue(captured["kwargs"]["use_table_recognition"])
+        self.assertFalse(captured["kwargs"]["use_formula_recognition"])
+        self.assertFalse(captured["kwargs"]["use_chart_recognition"])
+        self.assertFalse(captured["kwargs"]["use_seal_recognition"])
 
     def test_serializes_numpy_scalars_and_arrays(self):
         import numpy as np
