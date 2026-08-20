@@ -117,10 +117,10 @@ def load_benchmark_files(paths: Sequence[Path]) -> list[BenchmarkFile]:
     for input_path in paths:
         path = input_path.expanduser()
         if not path.is_file():
-            raise FileNotFoundError(f"Input file does not exist: {input_path}")
+            raise FileNotFoundError(f"输入文件不存在：{input_path}")
         data = path.read_bytes()
         if not data:
-            raise ValueError(f"Input file is empty: {input_path}")
+            raise ValueError(f"输入文件为空：{input_path}")
         files.append(
             BenchmarkFile(
                 path=path.resolve(),
@@ -129,7 +129,7 @@ def load_benchmark_files(paths: Sequence[Path]) -> list[BenchmarkFile]:
             )
         )
     if not files:
-        raise ValueError("At least one input file is required.")
+        raise ValueError("至少需要一个输入文件。")
     return files
 
 
@@ -140,9 +140,9 @@ def build_request_payloads(
     order_prefix: str,
 ) -> list[RequestPayload]:
     if total <= 0:
-        raise ValueError("total must be greater than 0")
+        raise ValueError("total 必须大于 0")
     if not files:
-        raise ValueError("At least one benchmark file is required.")
+        raise ValueError("至少需要一个压测文件。")
 
     payloads: list[RequestPayload] = []
     for index in range(total):
@@ -167,7 +167,7 @@ async def run_benchmark(
     timeout: float,
 ) -> list[RequestResult]:
     if concurrency <= 0:
-        raise ValueError("concurrency must be greater than 0")
+        raise ValueError("concurrency 必须大于 0")
 
     queue: asyncio.Queue[RequestPayload] = asyncio.Queue()
     for payload in payloads:
@@ -330,10 +330,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         return asyncio.run(async_main(argv))
     except KeyboardInterrupt:
-        print("Interrupted.", file=sys.stderr)
+        print("已中断。", file=sys.stderr)
         return 130
     except (FileNotFoundError, ValueError) as exc:
-        print(f"Error: {exc}", file=sys.stderr)
+        print(f"错误：{exc}", file=sys.stderr)
         return 2
 
 
@@ -341,9 +341,9 @@ def _positive_int(value: str) -> int:
     try:
         parsed = int(value)
     except ValueError as exc:
-        raise argparse.ArgumentTypeError(f"invalid integer: {value}") from exc
+        raise argparse.ArgumentTypeError(f"整数格式不正确：{value}") from exc
     if parsed <= 0:
-        raise argparse.ArgumentTypeError("must be greater than 0")
+        raise argparse.ArgumentTypeError("必须大于 0")
     return parsed
 
 
@@ -351,9 +351,9 @@ def _positive_float(value: str) -> float:
     try:
         parsed = float(value)
     except ValueError as exc:
-        raise argparse.ArgumentTypeError(f"invalid float: {value}") from exc
+        raise argparse.ArgumentTypeError(f"小数格式不正确：{value}") from exc
     if parsed <= 0:
-        raise argparse.ArgumentTypeError("must be greater than 0")
+        raise argparse.ArgumentTypeError("必须大于 0")
     return parsed
 
 

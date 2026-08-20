@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 
 
 class LayoutParsingRequest(BaseModel):
-    """Request body compatible with PaddleOCR's basic serving endpoint."""
+    """兼容 PaddleOCR 基础服务化部署接口的请求体。"""
 
     file: str | None = Field(default=None, description="图片/PDF Base64，data URL，或公网 URL")
     fileType: int | None = Field(default=None, description="0 表示 PDF，1 表示图片；为空时按文件内容推断")

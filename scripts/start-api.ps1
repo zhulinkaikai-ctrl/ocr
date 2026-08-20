@@ -23,7 +23,7 @@ if (Test-Path $EnvFile) {
 
 $Python = Join-Path $ProjectRoot ".venv\Scripts\python.exe"
 if (-not (Test-Path $Python)) {
-    throw "Python virtual environment not found: $Python"
+    throw "未找到 Python 虚拟环境：$Python"
 }
 
 & $Python -m uvicorn api_app:app --host $BindHost --port $Port

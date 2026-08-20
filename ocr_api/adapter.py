@@ -10,11 +10,11 @@ from .settings import get_settings
 
 
 class PPStructureV3UnavailableError(RuntimeError):
-    """PP-StructureV3 is not installed or cannot be initialized."""
+    """PP-StructureV3 未安装或无法初始化。"""
 
 
 class PPStructureV3Adapter:
-    """Lazy PP-StructureV3 wrapper that returns PaddleX raw JSON results."""
+    """懒加载的 PP-StructureV3 封装器，返回 PaddleX 原始 JSON 结果。"""
 
     def __init__(
         self,

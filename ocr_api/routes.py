@@ -25,7 +25,7 @@ router = APIRouter()
 
 @lru_cache(maxsize=1)
 def get_ocr_adapter() -> PPStructureV3Adapter:
-    """Return the process-wide OCR adapter; tests override this FastAPI dependency."""
+    """返回进程级 OCR 适配器；测试会覆盖这个 FastAPI 依赖。"""
     return PPStructureV3Adapter(lang="ch", enable_orientation=True)
 
 
@@ -60,7 +60,7 @@ async def layout_parsing(
             content=build_success(raw_results, request.fileType or infer_serving_file_type(uploaded)),
         )
     except Exception:
-        logger.exception("PP-StructureV3 layout parsing failed")
+        logger.exception("PP-StructureV3 版面解析失败")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content=build_error(500, "Internal Server Error"),

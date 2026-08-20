@@ -37,11 +37,11 @@ IMAGE_FORMATS = {
 
 
 class FileInputError(ValueError):
-    """The request file input is missing or invalid."""
+    """请求中的文件输入缺失或不合法。"""
 
 
 class FileDownloadError(RuntimeError):
-    """The public file URL is valid, but downloading failed."""
+    """公网文件 URL 合法，但下载失败。"""
 
 
 @dataclass(frozen=True)
@@ -146,7 +146,7 @@ def validate_public_file_url(url: str) -> str:
 
     for address in _resolve_host(parsed.hostname):
         if not _is_public_address(address):
-            raise FileInputError("non-public file url")
+            raise FileInputError("文件 URL 不允许指向非公网地址")
     return parsed.geturl()
 
 

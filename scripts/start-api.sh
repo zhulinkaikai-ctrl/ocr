@@ -16,7 +16,7 @@ PORT="${PORT:-8000}"
 PYTHON="${PYTHON:-$PROJECT_ROOT/.venv/bin/python}"
 
 if [[ ! -x "$PYTHON" ]]; then
-  echo "Python virtual environment not found: $PYTHON" >&2
+  echo "未找到 Python 虚拟环境：$PYTHON" >&2
   exit 1
 fi
 
