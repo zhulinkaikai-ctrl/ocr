@@ -103,20 +103,38 @@ def materialize_file(uploaded: UploadedFile) -> Iterator[Path]:
 
 
 async def load_request_file(
-    file_base64: str | None,
-    file_url: str | None,
-    image_base64: str | None = None,
-    image_url: str | None = None,
+    file: str | None,
+    file_type: int | None = None,
 ) -> UploadedFile:
-    if file_base64 and file_base64.strip():
-        return decode_base64_file(file_base64)
-    if image_base64 and image_base64.strip():
-        return decode_base64_file(image_base64)
-    if file_url and file_url.strip():
-        return await load_file_from_url(file_url)
-    if image_url and image_url.strip():
-        return await load_file_from_url(image_url)
-    raise FileInputError("缺少文件来源")
+    if not file or not file.strip():
+        raise FileInputError("缺少文件来源")
+
+    source = file.strip()
+    if source.lower().startswith(("http://", "https://")):
+        uploaded = await load_file_from_url(source)
+    else:
+        uploaded = decode_base64_file(source)
+
+    _validate_file_type(uploaded, file_type)
+    return uploaded
+
+
+def infer_serving_file_type(uploaded: UploadedFile) -> int:
+    if uploaded.content_type == "application/pdf":
+        return 0
+    if uploaded.content_type.startswith("image/"):
+        return 1
+    raise FileInputError("文件类型不受支持")
+
+
+def _validate_file_type(uploaded: UploadedFile, file_type: int | None) -> None:
+    if file_type is None:
+        return
+    if file_type not in {0, 1}:
+        raise FileInputError("fileType 只支持 0 或 1")
+    actual_file_type = infer_serving_file_type(uploaded)
+    if actual_file_type != file_type:
+        raise FileInputError("fileType 与文件内容不一致")
 
 
 def validate_public_file_url(url: str) -> str:

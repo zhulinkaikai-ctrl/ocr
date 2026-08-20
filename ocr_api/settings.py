@@ -8,6 +8,8 @@ from pathlib import Path
 
 DEFAULT_MAX_FILE_BYTES = 10 * 1024 * 1024
 DEFAULT_MAX_IMAGE_BYTES = DEFAULT_MAX_FILE_BYTES
+DEFAULT_OCR_DETECTION_MODEL = "PP-OCRv6_medium_det"
+DEFAULT_OCR_RECOGNITION_MODEL = "PP-OCRv6_medium_rec"
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -22,6 +24,8 @@ class AppSettings:
     max_file_bytes: int
     model_cache_dir: Path
     ocr_device: str | None
+    ocr_detection_model: str
+    ocr_recognition_model: str
 
     @property
     def max_image_bytes(self) -> int:
@@ -35,6 +39,8 @@ class AppSettings:
             max_file_bytes=_max_file_bytes(),
             model_cache_dir=_path("MODEL_CACHE_DIR", PROJECT_ROOT / ".paddlex_cache"),
             ocr_device=_optional_text("OCR_DEVICE"),
+            ocr_detection_model=_text("OCR_DETECTION_MODEL", DEFAULT_OCR_DETECTION_MODEL),
+            ocr_recognition_model=_text("OCR_RECOGNITION_MODEL", DEFAULT_OCR_RECOGNITION_MODEL),
         )
 
 
@@ -81,3 +87,11 @@ def _optional_text(name: str) -> str | None:
         return None
     value = value.strip()
     return value or None
+
+
+def _text(name: str, default: str) -> str:
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    value = value.strip()
+    return value or default

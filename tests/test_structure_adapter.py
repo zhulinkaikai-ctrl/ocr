@@ -10,6 +10,8 @@ from ocr_api.settings import clear_settings_cache
 
 
 class StructureAdapterTests(unittest.TestCase):
+    """PP-StructureV3 适配器测试，用 fake pipeline 避免加载真实模型。"""
+
     def setUp(self):
         clear_settings_cache()
         self.addCleanup(clear_settings_cache)
@@ -32,6 +34,7 @@ class StructureAdapterTests(unittest.TestCase):
 
         class FakePipeline:
             def __init__(self, **kwargs):
+                # 捕获初始化参数，保护默认模型组合不被无意改回高风险配置。
                 captured["kwargs"] = kwargs
 
             def predict(self, input_path):
@@ -55,10 +58,13 @@ class StructureAdapterTests(unittest.TestCase):
                 }
             ],
         )
-        self.assertEqual(captured["kwargs"]["lang"], "ch")
+        self.assertNotIn("lang", captured["kwargs"])
+        self.assertEqual(captured["kwargs"]["text_detection_model_name"], "PP-OCRv6_medium_det")
+        self.assertEqual(captured["kwargs"]["text_recognition_model_name"], "PP-OCRv6_medium_rec")
         self.assertTrue(captured["kwargs"]["use_doc_orientation_classify"])
         self.assertTrue(captured["kwargs"]["use_textline_orientation"])
         self.assertTrue(captured["kwargs"]["use_table_recognition"])
+        # 当前环境下这些增强模型初始化不稳定，默认关闭以保证 Java 调用可用。
         self.assertFalse(captured["kwargs"]["use_formula_recognition"])
         self.assertFalse(captured["kwargs"]["use_chart_recognition"])
         self.assertFalse(captured["kwargs"]["use_seal_recognition"])
@@ -70,6 +76,7 @@ class StructureAdapterTests(unittest.TestCase):
         class FakeResult:
             @property
             def json(self):
+                # PaddleX 结果里常见 numpy 类型，返回 Java 前必须转成 JSON-safe 数据。
                 return {
                     "res": {
                         "score": np.float32(0.75),

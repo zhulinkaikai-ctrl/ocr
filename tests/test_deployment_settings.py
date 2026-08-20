@@ -17,6 +17,8 @@ class DeploymentSettingsTests(unittest.TestCase):
                     "MODEL_CACHE_DIR": temp_dir,
                     "MAX_FILE_BYTES": "12345",
                     "LOG_LEVEL": "DEBUG",
+                    "OCR_DETECTION_MODEL": "PP-OCRv6_medium_det",
+                    "OCR_RECOGNITION_MODEL": "PP-OCRv6_medium_rec",
                 },
                 clear=True,
             ):
@@ -27,6 +29,8 @@ class DeploymentSettingsTests(unittest.TestCase):
         self.assertEqual(settings.max_file_bytes, 12345)
         self.assertEqual(settings.max_image_bytes, 12345)
         self.assertEqual(settings.log_level, "DEBUG")
+        self.assertEqual(settings.ocr_detection_model, "PP-OCRv6_medium_det")
+        self.assertEqual(settings.ocr_recognition_model, "PP-OCRv6_medium_rec")
 
     def test_rejects_invalid_max_file_bytes(self):
         from ocr_api.settings import AppSettings

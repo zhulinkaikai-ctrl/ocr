@@ -16,14 +16,23 @@ class PPStructureV3UnavailableError(RuntimeError):
 class PPStructureV3Adapter:
     """Lazy PP-StructureV3 wrapper that returns PaddleX raw JSON results."""
 
-    def __init__(self, lang: str = "ch", enable_orientation: bool = True):
+    def __init__(
+        self,
+        lang: str = "ch",
+        enable_orientation: bool = True,
+        text_detection_model_name: str | None = None,
+        text_recognition_model_name: str | None = None,
+    ):
+        settings = get_settings()
         self.lang = lang
         self.enable_orientation = enable_orientation
+        self.text_detection_model_name = text_detection_model_name or settings.ocr_detection_model
+        self.text_recognition_model_name = text_recognition_model_name or settings.ocr_recognition_model
         self._engine: Any | None = None
 
-    def recognize(self, input_path: str | Path) -> list[dict[str, Any]]:
+    def recognize(self, input_path: str | Path, **predict_options: Any) -> list[dict[str, Any]]:
         engine = self._get_engine()
-        result = engine.predict(str(input_path))
+        result = engine.predict(str(input_path), **predict_options)
         return [_result_to_json_safe(item) for item in _as_list(result)]
 
     def _get_engine(self) -> Any:
@@ -40,28 +49,26 @@ class PPStructureV3Adapter:
             ) from exc
 
         try:
-            self._engine = PPStructureV3(
-                lang=self.lang,
-                device=select_paddle_device(),
-                enable_mkldnn=False,
-                use_doc_orientation_classify=self.enable_orientation,
-                use_doc_unwarping=False,
-                use_textline_orientation=self.enable_orientation,
-                use_table_recognition=True,
-                use_formula_recognition=False,
-                use_chart_recognition=False,
-                use_seal_recognition=False,
-                use_region_detection=True,
-            )
+            pipeline_options = {
+                "device": select_paddle_device(),
+                "enable_mkldnn": False,
+                "text_detection_model_name": self.text_detection_model_name,
+                "text_recognition_model_name": self.text_recognition_model_name,
+                "use_doc_orientation_classify": self.enable_orientation,
+                "use_doc_unwarping": False,
+                "use_textline_orientation": self.enable_orientation,
+                "use_table_recognition": True,
+                "use_formula_recognition": False,
+                "use_chart_recognition": False,
+                "use_seal_recognition": False,
+                "use_region_detection": True,
+            }
+            if not self.text_detection_model_name and not self.text_recognition_model_name:
+                pipeline_options["lang"] = self.lang
+            self._engine = PPStructureV3(**pipeline_options)
         except Exception as exc:
             raise PPStructureV3UnavailableError(f"PP-StructureV3 初始化失败：{exc}") from exc
         return self._engine
-
-
-def collapse_raw_results(results: list[dict[str, Any]]) -> dict[str, Any] | list[dict[str, Any]]:
-    if len(results) == 1:
-        return results[0]
-    return results
 
 
 def _configure_paddle_runtime() -> None:

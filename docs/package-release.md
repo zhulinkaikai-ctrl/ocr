@@ -15,7 +15,6 @@ ocr-api-release.zip
 ```text
 api_app.py
 app.py
-id_card_ocr/
 ocr_api/
 tests/
 requirements-prod.txt
@@ -69,7 +68,6 @@ Copy-Item requirements-prod.txt $ReleaseDir
 Copy-Item .env.example $ReleaseDir
 Copy-Item README.md $ReleaseDir
 
-Copy-Item id_card_ocr $ReleaseDir -Recurse
 Copy-Item ocr_api $ReleaseDir -Recurse
 Copy-Item tests $ReleaseDir -Recurse
 Copy-Item scripts $ReleaseDir -Recurse
@@ -108,7 +106,6 @@ cp requirements-prod.txt "$RELEASE_DIR/"
 cp .env.example "$RELEASE_DIR/"
 cp README.md "$RELEASE_DIR/"
 
-cp -r id_card_ocr "$RELEASE_DIR/"
 cp -r ocr_api "$RELEASE_DIR/"
 cp -r tests "$RELEASE_DIR/"
 cp -r scripts "$RELEASE_DIR/"
@@ -148,7 +145,6 @@ ls .release-check/ocr-api
 
 ```text
 api_app.py
-id_card_ocr/
 ocr_api/
 requirements-prod.txt
 .env.example
@@ -208,8 +204,8 @@ http://服务器IP:8000/docs
 确认可以看到：
 
 ```text
-/api/v1/ocr/id-card
-/api/v1/ocr/business-license
+/layout-parsing
+/api/v1/health
 ```
 
 ## 七、常见问题

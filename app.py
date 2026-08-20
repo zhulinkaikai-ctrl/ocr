@@ -10,14 +10,15 @@ from PIL import Image, UnidentifiedImageError
 from ocr_api.adapter import (
     PPStructureV3Adapter,
     PPStructureV3UnavailableError,
-    collapse_raw_results,
 )
 from ocr_api.file_loader import (
     FileInputError,
     UploadedFile,
     build_uploaded_file,
+    infer_serving_file_type,
     materialize_file,
 )
+from ocr_api.serving_response import build_success
 
 
 SUPPORTED_UPLOAD_TYPES = ["jpg", "jpeg", "png", "bmp", "webp", "pdf"]
@@ -66,7 +67,7 @@ def main() -> None:
 
 
 def build_display_payload(results: list[dict[str, Any]]) -> dict[str, Any] | list[dict[str, Any]]:
-    return collapse_raw_results(results)
+    return build_success(results, file_type=1)
 
 
 def _run_ocr(uploaded: UploadedFile) -> dict[str, Any] | list[dict[str, Any]] | None:
@@ -80,7 +81,7 @@ def _run_ocr(uploaded: UploadedFile) -> dict[str, Any] | list[dict[str, Any]] | 
     except Exception as exc:
         st.error(f"OCR 识别失败：{exc}")
         return None
-    return build_display_payload(results)
+    return build_success(results, infer_serving_file_type(uploaded))
 
 
 def _render_preview(uploaded: UploadedFile) -> None:

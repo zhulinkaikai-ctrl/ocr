@@ -15,7 +15,6 @@ Java 业务系统 -> HTTP 调用 -> Python FastAPI OCR 服务 -> PaddleOCR 模�
 ```text
 api_app.py
 app.py
-id_card_ocr/
 ocr_api/
 requirements-prod.txt
 .env.example
@@ -47,7 +46,9 @@ __pycache__/
 ```text
 OCR_DEVICE=gpu:0
 MODEL_CACHE_DIR=.paddlex_cache
-MAX_IMAGE_BYTES=10485760
+OCR_DETECTION_MODEL=PP-OCRv6_medium_det
+OCR_RECOGNITION_MODEL=PP-OCRv6_medium_rec
+MAX_FILE_BYTES=10485760
 LOG_LEVEL=INFO
 ```
 
@@ -55,7 +56,8 @@ LOG_LEVEL=INFO
 
 - `OCR_DEVICE`：OCR 运行设备。GPU 服务器填 `gpu:0`；留空则自动判断。
 - `MODEL_CACHE_DIR`：PaddleOCR 模型缓存目录，生产环境可以改成绝对路径。
-- `MAX_IMAGE_BYTES`：单张图片最大字节数，默认 10MB。
+- `OCR_DETECTION_MODEL` / `OCR_RECOGNITION_MODEL`：PP-StructureV3 内部使用的 PP-OCRv6 检测/识别模型。
+- `MAX_FILE_BYTES`：单个图片或 PDF 最大字节数，默认 10MB。
 - `LOG_LEVEL`：日志级别，生产环境建议 `INFO`。
 
 ## 三、Windows 部署
@@ -100,7 +102,9 @@ GPU 示例：
 ```text
 OCR_DEVICE=gpu:0
 MODEL_CACHE_DIR=D:\services\tesrtOCR\.paddlex_cache
-MAX_IMAGE_BYTES=10485760
+OCR_DETECTION_MODEL=PP-OCRv6_medium_det
+OCR_RECOGNITION_MODEL=PP-OCRv6_medium_rec
+MAX_FILE_BYTES=10485760
 LOG_LEVEL=INFO
 ```
 
@@ -109,7 +113,9 @@ CPU 示例：
 ```text
 OCR_DEVICE=
 MODEL_CACHE_DIR=D:\services\tesrtOCR\.paddlex_cache
-MAX_IMAGE_BYTES=10485760
+OCR_DETECTION_MODEL=PP-OCRv6_medium_det
+OCR_RECOGNITION_MODEL=PP-OCRv6_medium_rec
+MAX_FILE_BYTES=10485760
 LOG_LEVEL=INFO
 ```
 
@@ -210,7 +216,9 @@ GPU 示例：
 ```text
 OCR_DEVICE=gpu:0
 MODEL_CACHE_DIR=/opt/tesrtOCR/.paddlex_cache
-MAX_IMAGE_BYTES=10485760
+OCR_DETECTION_MODEL=PP-OCRv6_medium_det
+OCR_RECOGNITION_MODEL=PP-OCRv6_medium_rec
+MAX_FILE_BYTES=10485760
 LOG_LEVEL=INFO
 ```
 
@@ -219,7 +227,9 @@ CPU 示例：
 ```text
 OCR_DEVICE=
 MODEL_CACHE_DIR=/opt/tesrtOCR/.paddlex_cache
-MAX_IMAGE_BYTES=10485760
+OCR_DETECTION_MODEL=PP-OCRv6_medium_det
+OCR_RECOGNITION_MODEL=PP-OCRv6_medium_rec
+MAX_FILE_BYTES=10485760
 LOG_LEVEL=INFO
 ```
 
@@ -280,37 +290,31 @@ journalctl -u ocr-api -f
 
 ## 五、Java 调用验证
 
-身份证接口：
+结构解析接口：
 
 ```text
-POST http://服务器IP:8000/api/v1/ocr/id-card
-```
-
-营业执照接口：
-
-```text
-POST http://服务器IP:8000/api/v1/ocr/business-license
+POST http://服务器IP:8000/layout-parsing
 ```
 
 请求体示例：
 
 ```json
 {
-  "orderNo": "ORDER-001",
-  "imageBase64": "图片base64"
+  "file": "图片或PDF base64",
+  "fileType": 1
 }
 ```
 
-也可以传公网图片 URL：
+也可以传公网图片/PDF URL：
 
 ```json
 {
-  "orderNo": "ORDER-002",
-  "imageUrl": "https://example.com/test.jpg"
+  "file": "https://example.com/test.jpg",
+  "fileType": 1
 }
 ```
 
-注意：`imageUrl` 只允许公网 HTTP/HTTPS 图片。内网地址、localhost、file 路径会被拒绝。Java 后端上传本地文件时，建议转成 Base64 调用。
+注意：`file` 只允许 Base64、data URL 或公网 HTTP/HTTPS URL。内网地址、localhost、file 路径会被拒绝。`fileType` 可选，`0` 表示 PDF，`1` 表示图片。
 
 ## 六、部署前验证
 
@@ -319,14 +323,14 @@ POST http://服务器IP:8000/api/v1/ocr/business-license
 Windows：
 
 ```powershell
-.\.venv\Scripts\python.exe -m compileall app.py api_app.py ocr_api id_card_ocr scripts tests
+.\.venv\Scripts\python.exe -m compileall app.py api_app.py ocr_api scripts tests
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
 Linux：
 
 ```bash
-./.venv/bin/python -m compileall app.py api_app.py ocr_api id_card_ocr scripts tests
+./.venv/bin/python -m compileall app.py api_app.py ocr_api scripts tests
 ./.venv/bin/python -m unittest discover -s tests -v
 ```
 
@@ -352,7 +356,7 @@ python scripts/preload-ocr.py
 
 ### 3. oneDNN/PIR 报错
 
-项目已在 `id_card_ocr/paddle_adapter.py` 中设置运行时参数：
+项目已在 `ocr_api/adapter.py` 中设置运行时参数：
 
 ```text
 FLAGS_enable_pir_api=0

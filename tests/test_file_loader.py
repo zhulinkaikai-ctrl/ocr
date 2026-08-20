@@ -9,6 +9,8 @@ from PIL import Image
 from ocr_api.file_loader import (
     FileInputError,
     decode_base64_file,
+    infer_serving_file_type,
+    load_request_file,
     materialize_file,
     validate_public_file_url,
 )
@@ -44,6 +46,20 @@ class FileLoaderTests(unittest.TestCase):
 
         self.assertFalse(path.exists())
 
+    def test_load_request_file_accepts_official_file_field_and_validates_file_type(self):
+        encoded = base64.b64encode(b"%PDF-1.7\n%test").decode("ascii")
+
+        uploaded = self._run_async(load_request_file(encoded, file_type=0))
+
+        self.assertEqual(uploaded.name, "upload.pdf")
+        self.assertEqual(infer_serving_file_type(uploaded), 0)
+
+    def test_load_request_file_rejects_mismatched_file_type(self):
+        encoded = base64.b64encode(b"%PDF-1.7\n%test").decode("ascii")
+
+        with self.assertRaises(FileInputError):
+            self._run_async(load_request_file(encoded, file_type=1))
+
     def test_rejects_unsupported_file_type(self):
         value = base64.b64encode(b"plain text").decode("ascii")
 
@@ -61,6 +77,11 @@ class FileLoaderTests(unittest.TestCase):
     def test_rejects_embedded_credentials(self):
         with self.assertRaises(FileInputError):
             validate_public_file_url("https://user:pass@example.com/file.pdf")
+
+    def _run_async(self, coroutine):
+        import asyncio
+
+        return asyncio.run(coroutine)
 
 
 if __name__ == "__main__":

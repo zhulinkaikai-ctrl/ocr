@@ -1,17 +1,22 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
 from functools import lru_cache
-from typing import Annotated
-from uuid import uuid4
+from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, status
+from fastapi.responses import JSONResponse
 
-from .adapter import PPStructureV3Adapter, collapse_raw_results
-from .file_loader import FileDownloadError, FileInputError, load_request_file, materialize_file
-from .responses import build_error
-from .schemas import OCRRequest
+from .adapter import PPStructureV3Adapter
+from .file_loader import (
+    FileDownloadError,
+    FileInputError,
+    infer_serving_file_type,
+    load_request_file,
+    materialize_file,
+)
+from .schemas import LayoutParsingRequest
+from .serving_response import build_error, build_success
 
 
 logger = logging.getLogger(__name__)
@@ -24,67 +29,54 @@ def get_ocr_adapter() -> PPStructureV3Adapter:
     return PPStructureV3Adapter(lang="ch", enable_orientation=True)
 
 
-@router.get("/health")
+@router.get("/api/v1/health")
 async def health() -> dict[str, int]:
     return {"status": 200}
 
 
-@router.post("/ocr/structure")
-async def recognize_structure(
-    request: OCRRequest,
+@router.post("/layout-parsing")
+async def layout_parsing(
+    request: LayoutParsingRequest,
     adapter: Annotated[PPStructureV3Adapter, Depends(get_ocr_adapter)],
-) -> dict | list[dict]:
-    """Run PP-StructureV3 and return its raw JSON-safe result."""
-    return await _recognize_raw(request, adapter)
-
-
-@router.post("/ocr/id-card")
-async def recognize_id_card(
-    request: OCRRequest,
-    adapter: Annotated[PPStructureV3Adapter, Depends(get_ocr_adapter)],
-) -> dict | list[dict]:
-    """Historical route alias; Java now parses the raw PP-StructureV3 JSON."""
-    return await _recognize_raw(request, adapter)
-
-
-@router.post("/ocr/business-license")
-async def recognize_business_license(
-    request: OCRRequest,
-    adapter: Annotated[PPStructureV3Adapter, Depends(get_ocr_adapter)],
-) -> dict | list[dict]:
-    """Historical route alias; Java now parses the raw PP-StructureV3 JSON."""
-    return await _recognize_raw(request, adapter)
-
-
-async def _recognize_raw(
-    request: OCRRequest,
-    adapter: PPStructureV3Adapter,
-) -> dict | list[dict]:
-    order_no = _order_no(request.orderNo)
+) -> JSONResponse:
     try:
-        uploaded = await load_request_file(
-            request.fileBase64,
-            request.fileUrl,
-            request.imageBase64,
-            request.imageUrl,
-        )
+        uploaded = await load_request_file(request.file, request.fileType)
     except FileInputError:
-        return build_error(order_no, 400, "参数错误")
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content=build_error(400, "Bad Request"),
+        )
     except FileDownloadError:
-        return build_error(order_no, 1001, "OCR识别异常")
+        return JSONResponse(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            content=build_error(502, "Bad Gateway"),
+        )
 
     try:
         with materialize_file(uploaded) as input_path:
-            raw_results = adapter.recognize(input_path)
-        return collapse_raw_results(raw_results)
+            raw_results = adapter.recognize(input_path, **_predict_options(request))
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content=build_success(raw_results, request.fileType or infer_serving_file_type(uploaded)),
+        )
     except Exception:
-        logger.exception("PP-StructureV3 OCR 识别异常，orderNo=%s", order_no)
-        return build_error(order_no, 1001, "OCR识别异常")
+        logger.exception("PP-StructureV3 layout parsing failed")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content=build_error(500, "Internal Server Error"),
+        )
 
 
-def _order_no(value: str | None) -> str:
-    """优先使用调用方订单号；没有传时生成一个便于日志追踪的编号。"""
-    if value and value.strip():
-        return value.strip()
-    timestamp = datetime.now().strftime("%Y%m%d%H%M%S%f")[:-3]
-    return f"{timestamp}{uuid4().hex[:6]}"
+def _predict_options(request: LayoutParsingRequest) -> dict[str, Any]:
+    options = {
+        "use_doc_orientation_classify": request.useDocOrientationClassify,
+        "use_doc_unwarping": request.useDocUnwarping,
+        "use_textline_orientation": request.useTextlineOrientation,
+        "use_seal_recognition": request.useSealRecognition,
+        "use_table_recognition": request.useTableRecognition,
+        "use_formula_recognition": request.useFormulaRecognition,
+        "use_chart_recognition": request.useChartRecognition,
+        "use_region_detection": request.useRegionDetection,
+        "format_block_content": request.formatBlockContent,
+    }
+    return {key: value for key, value in options.items() if value is not None}

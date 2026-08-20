@@ -3,15 +3,18 @@ from __future__ import annotations
 from pydantic import BaseModel, Field
 
 
-class OCRRequest(BaseModel):
-    """OCR request body.
+class LayoutParsingRequest(BaseModel):
+    """Request body compatible with PaddleOCR's basic serving endpoint."""
 
-    New callers should use fileBase64 or fileUrl. imageBase64/imageUrl stay as
-    compatibility aliases for the historical Java integration.
-    """
-
-    orderNo: str | None = Field(default=None, description="调用方订单号；为空时服务端自动生成")
-    fileBase64: str | None = Field(default=None, description="图片或 PDF Base64，支持 data URL 前缀")
-    fileUrl: str | None = Field(default=None, description="公网 http/https 图片或 PDF URL")
-    imageBase64: str | None = Field(default=None, description="兼容旧字段：图片 Base64")
-    imageUrl: str | None = Field(default=None, description="兼容旧字段：公网图片 URL")
+    file: str | None = Field(default=None, description="图片/PDF Base64，data URL，或公网 URL")
+    fileType: int | None = Field(default=None, description="0 表示 PDF，1 表示图片；为空时按文件内容推断")
+    visualize: bool | None = Field(default=None, description="是否返回可视化图片")
+    useDocOrientationClassify: bool | None = None
+    useDocUnwarping: bool | None = None
+    useTextlineOrientation: bool | None = None
+    useSealRecognition: bool | None = None
+    useTableRecognition: bool | None = None
+    useFormulaRecognition: bool | None = None
+    useChartRecognition: bool | None = None
+    useRegionDetection: bool | None = None
+    formatBlockContent: bool | None = None
