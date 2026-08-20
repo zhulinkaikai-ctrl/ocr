@@ -1,5 +1,6 @@
 # Install paddlepaddle separately for your CPU/GPU environment; see README.md.
 paddleocr>=3.0.0
+paddlex>=3.0.0
 streamlit>=1.36.0
 pillow>=10.0.0
 numpy>=1.24.0

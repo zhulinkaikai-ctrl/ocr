@@ -4,11 +4,14 @@ from pydantic import BaseModel, Field
 
 
 class OCRRequest(BaseModel):
-    """两个 OCR 接口共用的请求体。
+    """OCR request body.
 
-    调用方二选一传 imageBase64 或 imageUrl；如果两者都传，服务端优先使用 imageBase64。
+    New callers should use fileBase64 or fileUrl. imageBase64/imageUrl stay as
+    compatibility aliases for the historical Java integration.
     """
 
     orderNo: str | None = Field(default=None, description="调用方订单号；为空时服务端自动生成")
-    imageBase64: str | None = Field(default=None, description="图片 Base64，支持 data URL 前缀")
-    imageUrl: str | None = Field(default=None, description="公网 http/https 图片 URL")
+    fileBase64: str | None = Field(default=None, description="图片或 PDF Base64，支持 data URL 前缀")
+    fileUrl: str | None = Field(default=None, description="公网 http/https 图片或 PDF URL")
+    imageBase64: str | None = Field(default=None, description="兼容旧字段：图片 Base64")
+    imageUrl: str | None = Field(default=None, description="兼容旧字段：公网图片 URL")
