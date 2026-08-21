@@ -99,6 +99,7 @@ curl -X POST http://127.0.0.1:8000/layout-parsing `
 
 - `OCR_DEVICE`：为空时自动检测，GPU 可设置为 `gpu:0`
 - `MODEL_CACHE_DIR`：模型缓存目录
+- `OCR_CPU_THREADS`：PP-StructureV3 CPU 推理线程数，默认 `4`
 - `MAX_FILE_BYTES`：上传/下载文件大小限制
 - `LOG_LEVEL`：日志级别
 

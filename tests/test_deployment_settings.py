@@ -19,6 +19,7 @@ class DeploymentSettingsTests(unittest.TestCase):
                     "LOG_LEVEL": "DEBUG",
                     "OCR_DETECTION_MODEL": "PP-OCRv6_medium_det",
                     "OCR_RECOGNITION_MODEL": "PP-OCRv6_medium_rec",
+                    "OCR_CPU_THREADS": "8",
                 },
                 clear=True,
             ):
@@ -31,11 +32,19 @@ class DeploymentSettingsTests(unittest.TestCase):
         self.assertEqual(settings.log_level, "DEBUG")
         self.assertEqual(settings.ocr_detection_model, "PP-OCRv6_medium_det")
         self.assertEqual(settings.ocr_recognition_model, "PP-OCRv6_medium_rec")
+        self.assertEqual(settings.ocr_cpu_threads, 8)
 
     def test_rejects_invalid_max_file_bytes(self):
         from ocr_api.settings import AppSettings
 
         with patch.dict(os.environ, {"MAX_FILE_BYTES": "0"}, clear=True):
+            with self.assertRaises(ValueError):
+                AppSettings.from_env()
+
+    def test_rejects_invalid_ocr_cpu_threads(self):
+        from ocr_api.settings import AppSettings
+
+        with patch.dict(os.environ, {"OCR_CPU_THREADS": "0"}, clear=True):
             with self.assertRaises(ValueError):
                 AppSettings.from_env()
 
@@ -46,6 +55,7 @@ class DeploymentSettingsTests(unittest.TestCase):
             settings = AppSettings.from_env()
 
         self.assertEqual(settings.max_file_bytes, 6789)
+        self.assertEqual(settings.ocr_cpu_threads, 4)
 
 
 if __name__ == "__main__":

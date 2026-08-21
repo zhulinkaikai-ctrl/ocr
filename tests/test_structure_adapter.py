@@ -61,6 +61,7 @@ class StructureAdapterTests(unittest.TestCase):
         self.assertNotIn("lang", captured["kwargs"])
         self.assertEqual(captured["kwargs"]["text_detection_model_name"], "PP-OCRv6_medium_det")
         self.assertEqual(captured["kwargs"]["text_recognition_model_name"], "PP-OCRv6_medium_rec")
+        self.assertEqual(captured["kwargs"]["cpu_threads"], 4)
         self.assertTrue(captured["kwargs"]["use_doc_orientation_classify"])
         self.assertTrue(captured["kwargs"]["use_textline_orientation"])
         self.assertTrue(captured["kwargs"]["use_table_recognition"])

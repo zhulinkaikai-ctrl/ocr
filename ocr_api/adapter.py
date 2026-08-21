@@ -28,6 +28,7 @@ class PPStructureV3Adapter:
         self.enable_orientation = enable_orientation
         self.text_detection_model_name = text_detection_model_name or settings.ocr_detection_model
         self.text_recognition_model_name = text_recognition_model_name or settings.ocr_recognition_model
+        self.cpu_threads = settings.ocr_cpu_threads
         self._engine: Any | None = None
 
     def recognize(self, input_path: str | Path, **predict_options: Any) -> list[dict[str, Any]]:
@@ -51,6 +52,7 @@ class PPStructureV3Adapter:
         try:
             pipeline_options = {
                 "device": select_paddle_device(),
+                "cpu_threads": self.cpu_threads,
                 "enable_mkldnn": False,
                 "text_detection_model_name": self.text_detection_model_name,
                 "text_recognition_model_name": self.text_recognition_model_name,

@@ -10,6 +10,7 @@ DEFAULT_MAX_FILE_BYTES = 10 * 1024 * 1024
 DEFAULT_MAX_IMAGE_BYTES = DEFAULT_MAX_FILE_BYTES
 DEFAULT_OCR_DETECTION_MODEL = "PP-OCRv6_medium_det"
 DEFAULT_OCR_RECOGNITION_MODEL = "PP-OCRv6_medium_rec"
+DEFAULT_OCR_CPU_THREADS = 4
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -26,6 +27,7 @@ class AppSettings:
     ocr_device: str | None
     ocr_detection_model: str
     ocr_recognition_model: str
+    ocr_cpu_threads: int
 
     @property
     def max_image_bytes(self) -> int:
@@ -41,6 +43,7 @@ class AppSettings:
             ocr_device=_optional_text("OCR_DEVICE"),
             ocr_detection_model=_text("OCR_DETECTION_MODEL", DEFAULT_OCR_DETECTION_MODEL),
             ocr_recognition_model=_text("OCR_RECOGNITION_MODEL", DEFAULT_OCR_RECOGNITION_MODEL),
+            ocr_cpu_threads=_positive_int("OCR_CPU_THREADS", DEFAULT_OCR_CPU_THREADS),
         )
 
 
